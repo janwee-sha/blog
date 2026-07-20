@@ -1,0 +1,48 @@
+<script>
+async function renderMermaidBlocks() {
+	const codeBlocks = Array.from(document.querySelectorAll<HTMLElement>(
+		'code.language-mermaid, code[data-language="mermaid"], pre[data-language="mermaid"] code',
+	));
+	if (codeBlocks.length === 0) return;
+
+	const { default: mermaid } = await import("mermaid");
+	mermaid.initialize({
+		startOnLoad: false,
+		securityLevel: "strict",
+		theme: document.documentElement.classList.contains("dark") ? "dark" : "default",
+	});
+
+	let index = 0;
+	for (const code of codeBlocks) {
+		const wrapper = code.closest<HTMLElement>("figure.expressive-code") ?? code.parentElement;
+		if (!wrapper || wrapper.dataset.mermaidRendered === "true") continue;
+		wrapper.dataset.mermaidRendered = "true";
+		const renderedLines = Array.from(code.querySelectorAll<HTMLElement>(".ec-line .code"));
+		const source = renderedLines.length > 0
+			? renderedLines.map((line) => line.textContent ?? "").join("\n")
+			: code.textContent ?? "";
+		const container = document.createElement("div");
+		container.className = "mermaid-diagram my-6 overflow-x-auto rounded-xl bg-white p-4 dark:bg-black/20";
+		try {
+			const id = `mermaid-${Date.now()}-${index++}`;
+			const { svg } = await mermaid.render(id, source);
+			container.innerHTML = svg;
+			wrapper.replaceWith(container);
+		} catch (error) {
+			wrapper.dataset.mermaidRendered = "false";
+			console.error("Unable to render Mermaid diagram", error);
+		}
+	}
+}
+
+const migrationWindow = window as typeof window & { __janweeMermaidBound?: boolean };
+if (!migrationWindow.__janweeMermaidBound) {
+	migrationWindow.__janweeMermaidBound = true;
+	document.addEventListener("DOMContentLoaded", renderMermaidBlocks);
+	document.addEventListener("swup:enable", () => {
+		window.swup?.hooks.on("page:view", renderMermaidBlocks);
+	});
+	if (window.swup) window.swup.hooks.on("page:view", renderMermaidBlocks);
+}
+renderMermaidBlocks();
+</script>

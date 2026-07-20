@@ -16,6 +16,16 @@ pnpm-debug.log*
 # environment variables
 .env
 .env.production
+.env.*
+!.env.example
+
+# local WordPress migration staging and credentials
+.migration/
+.wrangler/
+db_password.txt
+*.sql
+*.sql.gz
+*.wpress
 
 # macOS-specific files
 .DS_Store

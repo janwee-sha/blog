@@ -9,8 +9,13 @@
     "build": "astro build && pagefind --site dist",
     "preview": "astro preview",
     "astro": "astro",
-    "type-check": "tsc --noEmit --isolatedDeclarations",
+    "type-check": "tsc --noEmit",
     "new-post": "node scripts/new-post.js",
+    "wp:export": "bash scripts/export-wordpress.sh",
+    "wp:migrate": "node scripts/migrate-wordpress.mjs",
+    "wp:verify": "node scripts/verify-migration.mjs",
+    "test:migration": "node --test scripts/migrate-wordpress.test.mjs",
+    "check:site": "node scripts/check-built-site.mjs",
     "format": "biome format --write ./src",
     "lint": "biome check --write ./src",
     "preinstall": "npx only-allow pnpm"
@@ -25,6 +30,7 @@
     "@expressive-code/plugin-collapsible-sections": "^0.41.4",
     "@expressive-code/plugin-line-numbers": "^0.41.4",
     "@fontsource-variable/jetbrains-mono": "^5.2.8",
+    "@fontsource-variable/noto-sans-sc": "^5.3.0",
     "@fontsource/roboto": "^5.2.9",
     "@iconify-json/fa6-brands": "^1.2.6",
     "@iconify-json/fa6-regular": "^1.2.4",
@@ -40,6 +46,7 @@
     "katex": "^0.16.27",
     "markdown-it": "^14.1.0",
     "mdast-util-to-string": "^4.0.0",
+    "mermaid": "^11.16.0",
     "overlayscrollbars": "^2.12.0",
     "pagefind": "^1.4.0",
     "photoswipe": "^5.4.4",
@@ -69,8 +76,11 @@
     "@types/markdown-it": "^14.1.2",
     "@types/mdast": "^4.0.4",
     "@types/sanitize-html": "^2.16.0",
+    "@types/turndown": "^5.0.6",
     "postcss-import": "^16.1.1",
-    "postcss-nesting": "^13.0.2"
+    "postcss-nesting": "^13.0.2",
+    "turndown": "^7.2.4",
+    "turndown-plugin-gfm": "^1.0.2"
   },
   "packageManager": "pnpm@9.14.4"
 }
