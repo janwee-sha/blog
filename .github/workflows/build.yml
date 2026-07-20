@@ -18,13 +18,13 @@ jobs:
     runs-on: ubuntu-latest
     name: Check and build with Node.js 22
     steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
       - name: Setup Node.js
         uses: actions/setup-node@cdca7365b2dadb8aad0a33bc7601856ffabcc48e # v4.3.0
         with:
           node-version-file: .node-version
-
-      - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Setup pnpm
         uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
@@ -40,5 +40,14 @@ jobs:
       - name: Run TypeScript Check
         run: pnpm type-check
 
+      - name: Run Migration Tests
+        run: pnpm test:migration
+
+      - name: Verify Migrated Content
+        run: pnpm wp:verify
+
       - name: Build Site and Search Index
         run: pnpm build
+
+      - name: Check Built Site
+        run: pnpm check:site

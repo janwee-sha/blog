@@ -391,6 +391,10 @@ function writeJson(file, value) {
 	fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`);
 }
 
+function stripTrailingWhitespace(value) {
+	return value.replace(/[ \t]+$/gm, "");
+}
+
 function copyMedia(context, uploadsRoot) {
 	const missing = [];
 	for (const relativePath of Array.from(context.mediaPaths).sort()) {
@@ -425,7 +429,10 @@ export function runMigration({ input = DEFAULT_INPUT, uploads = DEFAULT_UPLOADS 
 		collectUploadUrls(elementor, context);
 		const markdown = convertElementorTree(elementor, context).trim();
 		if (!markdown) throw new Error(`Converted article is empty: ${post.slug}`);
-		generatedPosts.push({ post, content: `${makeFrontmatter(post, markdown)}${markdown}\n` });
+		generatedPosts.push({
+			post,
+			content: stripTrailingWhitespace(`${makeFrontmatter(post, markdown)}${markdown}\n`),
+		});
 	}
 
 	context.slug = about.slug;
@@ -453,7 +460,10 @@ export function runMigration({ input = DEFAULT_INPUT, uploads = DEFAULT_UPLOADS 
 	for (const item of generatedPosts) {
 		fs.writeFileSync(path.join(postsDirectory, `${item.post.slug}.md`), item.content);
 	}
-	fs.writeFileSync(path.join(repoRoot, "src", "content", "spec", "about.md"), `${aboutMarkdown}\n`);
+	fs.writeFileSync(
+		path.join(repoRoot, "src", "content", "spec", "about.md"),
+		stripTrailingWhitespace(`${aboutMarkdown}\n`),
+	);
 
 	const urlMap = [
 		...posts.map((post) => ({

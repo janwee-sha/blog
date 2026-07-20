@@ -10,6 +10,9 @@
 - Privacy、全部非公开内容、评论、用户私密资料以及 private 附件均未导入。
 - 公开作者头像采用附件 8539 的 `my_avatar-300x300.jpg` 衍生图；站点图标采用附件 9002。
 - 本地迁移测试、内容清单验证、Astro 检查、TypeScript 检查和生产构建均纳入验收命令。
+- 桌面端、移动端、About 页面及复杂文章的视觉核对已通过；中文字体随站点打包，Mermaid 按需在浏览器端渲染。
+- 可构建主题基线提交 `5631df9` 已推送到 GitHub `main`；完整迁移内容保留为第二个本地提交，将作为 Cloudflare Pages Git 自动构建的触发验证。
+- 用户从 Cloudflare 控制台安装并只授权 `janwee-sha/blog` 后，Git 集成项目 `janwee-blog` 已成功创建；生产分支为 `main`，生产与预览分支自动部署均已启用。
 
 ## 1. 目标与边界
 
@@ -162,13 +165,13 @@ git push -u origin post/<slug>
 
 ## 5. 验收清单
 
-- [ ] WordPress 源站在整个迁移期间保持可用且未被修改。
-- [ ] 已发布文章和必要页面的数量与源清单一致。
-- [ ] 标题、时间、slug、分类、标签、封面和正文转换正确。
-- [ ] 图片、附件、内部链接、RSS、站点地图、搜索和 404 正常。
-- [ ] 仓库不含凭据、数据库、备份、私密内容和无关缓存。
-- [ ] `pnpm check` 与 `pnpm build` 成功。
-- [ ] GitHub `main` 分支是 Cloudflare Pages 的生产源。
+- [x] WordPress 源站在整个迁移期间保持可用且未被修改。
+- [x] 已发布文章和必要页面的数量与源清单一致。
+- [x] 标题、时间、slug、分类、标签、封面和正文转换正确。
+- [x] 图片、附件、内部链接、RSS、站点地图、搜索和 404 正常。
+- [x] 仓库不含凭据、数据库、备份、私密内容和无关缓存。
+- [x] `pnpm check` 与 `pnpm build` 成功。
+- [x] GitHub `main` 分支是 Cloudflare Pages 的生产源。
 - [ ] Pull Request/非生产分支可获得预览部署。
 - [ ] `https://static.janwee.blog` 的 DNS、TLS 和页面访问正常。
 - [ ] 向 GitHub 推送新文章可以自动触发生产发布。
