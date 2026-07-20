@@ -14,7 +14,7 @@
 - 可构建主题基线提交 `5631df9` 已推送到 GitHub `main`；完整迁移内容保留为第二个本地提交，将作为 Cloudflare Pages Git 自动构建的触发验证。
 - 用户从 Cloudflare 控制台安装并只授权 `janwee-sha/blog` 后，Git 集成项目 `janwee-blog` 已成功创建；生产分支为 `main`，生产与预览分支自动部署均已启用。
 - 完整迁移提交 `a5ee4a8` 已由 `github:push` 自动构建并成功发布到 `janwee-blog.pages.dev`；首次冒烟测试发现缺少顶层 `404.html` 会使未知路径回退为 200。修正提交 `176ad47` 已再次通过 GitHub push 自动发布；线上首页、About、文章、RSS、站点地图、301 重定向和 404 响应均已复验通过。
-- 非生产分支已成功触发 Cloudflare Preview 部署并完成访问验证，临时测试分支随后已删除。用户已在 Cloudflare 确认创建 `static` → `janwee-blog.pages.dev`；权威与公共 DNS、严格 HTTPS、关键页面、301、404、canonical、RSS、站点地图和静态资源缓存均已通过。Pages 域名所有权验证为 `active`；后台证书验证状态仍在异步收敛，但实际 TLS 证书有效，且已排除 CAA 限制和 HTTP DCV 路径阻塞。
+- 非生产分支已成功触发 Cloudflare Preview 部署并完成访问验证，临时测试分支随后已删除。用户已在 Cloudflare 确认创建 `static` → `janwee-blog.pages.dev`；权威与公共 DNS、严格 HTTPS、关键页面、301、404、canonical、RSS、站点地图和静态资源缓存均已通过。Pages 自定义域总状态、HTTP 证书验证和域名所有权验证现均为 `active`。
 - canonical 修正提交 `40cd38d` 及格式修正提交 `a1a4bf9` 均已由 GitHub push 自动完成生产构建；最终提交对应的 GitHub “Build and Check”与“Code quality”工作流全部通过。
 - 原 `janwee.blog` 公网仍返回 200，WordPress 与 MySQL 容器持续运行，本轮操作未修改主域 DNS 或服务。
 
