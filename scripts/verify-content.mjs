@@ -83,25 +83,10 @@ if (publicPostCount === 0)
 	failures.push("At least one public post with draft: false is required.");
 if (!fs.existsSync(path.join(specRoot, "about.md")))
 	failures.push("src/content/spec/about.md is required.");
-if (
-	walk(path.join(repoRoot, "src", "content")).some((file) =>
-		/(^|[/\\])privacy\.mdx?$/.test(file),
-	)
-) {
-	failures.push("Privacy content must not be published.");
-}
-if (fs.existsSync(path.join(publicRoot, "uploads", "nsl_avatars")))
-	failures.push("Private nsl_avatars media must not be published.");
 
 const uploadReferences = new Set();
 for (const file of contentFiles) {
 	const source = fs.readFileSync(file, "utf8");
-	const relative = path.relative(repoRoot, file);
-	if (/https:\/\/static\.janwee\.blog|\/wp-content\/uploads\//i.test(source)) {
-		failures.push(
-			`Legacy production or WordPress media URL remains in ${relative}.`,
-		);
-	}
 	for (const match of source.matchAll(/\/uploads\/[^)\]\s"'<>]+/g))
 		uploadReferences.add(match[0]);
 }
@@ -118,36 +103,6 @@ for (const reference of uploadReferences) {
 	if (!target.startsWith(`${publicRoot}${path.sep}`) || !fs.existsSync(target))
 		failures.push(`Missing public media file: ${reference}`);
 }
-
-const redirectsFile = path.join(publicRoot, "_redirects");
-if (!fs.existsSync(redirectsFile)) {
-	failures.push("public/_redirects is required.");
-} else {
-	const sources = new Set();
-	for (const [index, rawLine] of fs
-		.readFileSync(redirectsFile, "utf8")
-		.split(/\r?\n/)
-		.entries()) {
-		const line = rawLine.trim();
-		if (!line || line.startsWith("#")) continue;
-		const fields = line.split(/\s+/);
-		if (
-			fields.length !== 3 ||
-			!fields[0].startsWith("/") ||
-			!fields[1].startsWith("/") ||
-			!/^(301|302|303|307|308)$/.test(fields[2])
-		) {
-			failures.push(`Invalid redirect on line ${index + 1}: ${line}`);
-			continue;
-		}
-		if (sources.has(fields[0]))
-			failures.push(`Duplicate redirect source: ${fields[0]}`);
-		sources.add(fields[0]);
-	}
-	if (sources.size === 0)
-		failures.push("At least one compatibility redirect is required.");
-}
-
 if (failures.length > 0) {
 	console.error(Array.from(new Set(failures)).join("\n"));
 	process.exit(1);

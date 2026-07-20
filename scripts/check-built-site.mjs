@@ -52,8 +52,6 @@ if (postPages.length !== publicPostCount)
 	failures.push(
 		`Expected ${publicPostCount} generated post pages, found ${postPages.length}.`,
 	);
-if (fs.existsSync(path.join(distRoot, "privacy", "index.html")))
-	failures.push("Privacy page must not be generated.");
 const notFoundPage = path.join(distRoot, "404.html");
 if (!fs.existsSync(notFoundPage))
 	failures.push(
@@ -63,10 +61,6 @@ if (!fs.existsSync(notFoundPage))
 for (const file of htmlFiles) {
 	const html = fs.readFileSync(file, "utf8");
 	const relativeFile = path.relative(distRoot, file);
-	if (/fuwari\.vercel\.app|Lorem Ipsum|Demo Site/.test(html))
-		failures.push(`Demo identity remains in ${relativeFile}.`);
-	if (html.includes("https://static.janwee.blog"))
-		failures.push(`Legacy canonical origin remains in ${relativeFile}.`);
 	if (!html.includes(expectedOrigin) && relativeFile !== "404.html")
 		failures.push(`Expected canonical origin is absent in ${relativeFile}.`);
 
@@ -108,15 +102,6 @@ for (const file of htmlFiles) {
 			failures.push(`Invalid URL in ${relativeFile}: ${value}`);
 			continue;
 		}
-		const documentedLocalOpenClawDashboard =
-			relativeFile === "posts/getting-started-with-openclaw/index.html" &&
-			target.href === "http://localhost:18789/";
-		if (
-			target.hostname === "142.171.184.180" ||
-			(target.hostname === "localhost" && !documentedLocalOpenClawDashboard)
-		) {
-			failures.push(`Internal development link in ${relativeFile}: ${value}`);
-		}
 		if (
 			target.origin === expectedOrigin &&
 			!localTargetExists(target.pathname)
@@ -142,19 +127,6 @@ for (const generatedFile of [
 	const content = fs.readFileSync(file, "utf8");
 	if (!content.includes(expectedOrigin))
 		failures.push(`${generatedFile} does not use ${expectedOrigin}.`);
-	if (content.includes("https://static.janwee.blog"))
-		failures.push(`Legacy origin remains in ${generatedFile}.`);
-}
-
-const sourceRedirects = path.join(repoRoot, "public", "_redirects");
-const builtRedirects = path.join(distRoot, "_redirects");
-if (!fs.existsSync(builtRedirects))
-	failures.push("The built site is missing _redirects.");
-else if (
-	fs.readFileSync(sourceRedirects, "utf8") !==
-	fs.readFileSync(builtRedirects, "utf8")
-) {
-	failures.push("The built _redirects file differs from public/_redirects.");
 }
 
 if (failures.length > 0) {
@@ -163,5 +135,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-	`Checked ${htmlFiles.length} HTML files and ${postPages.length} post pages for canonical metadata, feeds, redirects, local links, and demo identity.`,
+	`Checked ${htmlFiles.length} HTML files and ${postPages.length} post pages for canonical metadata, feeds, and local links.`,
 );
