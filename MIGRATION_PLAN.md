@@ -13,7 +13,9 @@
 - 桌面端、移动端、About 页面及复杂文章的视觉核对已通过；中文字体随站点打包，Mermaid 按需在浏览器端渲染。
 - 可构建主题基线提交 `5631df9` 已推送到 GitHub `main`；完整迁移内容保留为第二个本地提交，将作为 Cloudflare Pages Git 自动构建的触发验证。
 - 用户从 Cloudflare 控制台安装并只授权 `janwee-sha/blog` 后，Git 集成项目 `janwee-blog` 已成功创建；生产分支为 `main`，生产与预览分支自动部署均已启用。
-- 完整迁移提交 `a5ee4a8` 已由 `github:push` 自动构建并成功发布到 `janwee-blog.pages.dev`；首次冒烟测试发现缺少顶层 `404.html` 会使未知路径回退为 200。静态 404 页面及构建产物检查现已补齐，本地构建与站点校验通过，等待推送后复验线上响应。
+- 完整迁移提交 `a5ee4a8` 已由 `github:push` 自动构建并成功发布到 `janwee-blog.pages.dev`；首次冒烟测试发现缺少顶层 `404.html` 会使未知路径回退为 200。修正提交 `176ad47` 已再次通过 GitHub push 自动发布；线上首页、About、文章、RSS、站点地图、301 重定向和 404 响应均已复验通过。
+- 非生产分支已成功触发 Cloudflare Preview 部署并完成访问验证，临时测试分支随后已删除。`static.janwee.blog` 已关联到 Pages Custom domains，但当前 Wrangler OAuth 只有 Zone Read、没有 DNS Write，Cloudflare API 未自动创建 CNAME，域名状态暂为 `pending`；需要在 Pages/DNS 控制台确认创建 `static` → `janwee-blog.pages.dev` 后继续验证 TLS。
+- 原 `janwee.blog` 公网仍返回 200，WordPress 与 MySQL 容器持续运行，本轮操作未修改主域 DNS 或服务。
 
 ## 1. 目标与边界
 
@@ -173,10 +175,10 @@ git push -u origin post/<slug>
 - [x] 仓库不含凭据、数据库、备份、私密内容和无关缓存。
 - [x] `pnpm check` 与 `pnpm build` 成功。
 - [x] GitHub `main` 分支是 Cloudflare Pages 的生产源。
-- [ ] Pull Request/非生产分支可获得预览部署。
+- [x] Pull Request/非生产分支可获得预览部署。
 - [ ] `https://static.janwee.blog` 的 DNS、TLS 和页面访问正常。
 - [x] 向 GitHub 推送新文章可以自动触发生产发布。
-- [ ] `https://janwee.blog` 仍指向原 WordPress 站点。
+- [x] `https://janwee.blog` 仍指向原 WordPress 站点。
 
 ## 6. 暂不执行的事项
 
