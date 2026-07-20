@@ -9,6 +9,8 @@ category: "JAVA"
 draft: false
 lang: "zh_CN"
 ---
+> 瀑布歌道：“我得到自由时便有歌声了。”
+
 ## 简介
 
 在 Java 程序中，当线程池 ThreadPoolExecutor 中的任务数超过最大线程数的阈值且工作队列已满时，线程池会根据线程池指定的饱和策略来处理新的任务。通过传递一个 RejectedExecutionHandler 类的实例给线程池模型 ThreadPoolExecutor 的构造器，我们可以修改 Java 中线程池执行器的饱和策略。
@@ -158,10 +160,3 @@ public void testDiscardOldest() throws InterruptedException {
 ```
 
 这一次我们创建一个核心线程数和最大线程数都为 1，工作队列为一个初始容量为 2 的阻塞队列，指定线程池饱和策略为丢弃最老任务，然后向线程池提交向本地队列分别插入整数 1、2、3 的任务，提交第三个任务时线程饱和并丢弃最老的任务（即向队列插入 1 的任务）放入新任务，因此队列最终会被插入 2 和 3。
-
----
-
-> [!NOTE]
-> 瀑布歌道：“我得到自由时便有歌声了。”
-
----

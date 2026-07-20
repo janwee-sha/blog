@@ -9,7 +9,6 @@ category: "系统架构"
 draft: false
 lang: "zh_CN"
 ---
-> [!NOTE]
 > 樵夫的斧头，问树要斧柄。
 > 树便给了他。
 

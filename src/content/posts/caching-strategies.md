@@ -9,6 +9,8 @@ category: "系统架构"
 draft: false
 lang: "zh_CN"
 ---
+> 思考令人不适，就像走在雨里。 当风增强时，似乎雨下得更大。
+
 ## 前言
 
 在构建高性能应用程序和系统时，选择适当的缓存策略是至关重要的。数据库和缓存之间的关系直接影响系统的性能、可伸缩性和稳定性。下面讨论几种常见的缓存策略，探讨它们的特点以及在实际应用中的优劣之处。
@@ -69,10 +71,3 @@ lang: "zh_CN"
 ## 引用
 
 [https://www.prisma.io/dataguide/managing-databases/introduction-database-caching](https://www.prisma.io/dataguide/managing-databases/introduction-database-caching)
-
----
-
-> [!NOTE]
-> 思考令人不适，就像走在雨里。 当风增强时，似乎雨下得更大。
-
----

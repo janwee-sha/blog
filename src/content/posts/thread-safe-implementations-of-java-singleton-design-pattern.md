@@ -9,6 +9,14 @@ category: "设计模式"
 draft: false
 lang: "zh_CN"
 ---
+> 我愿我的生命是一辆牛车
+>
+> 清晨嘎吱作响地走在路上
+>
+> 当它到达它要去的地方，傍晚
+>
+> 开始沿着同一条路返回
+
 Java单例模式是“Gangs of Four”提出的设计模式之一，属于创建型设计模式。这种模式限制类的实例化，确保在Java虚拟机中只存在一个类的实例。单例模式看起来简单，但在实现时却需要考虑很多因素。
 
 下文是对线程安全的单例设计模式的不同实现的探讨。
@@ -191,12 +199,3 @@ protected Object readResolve() {
 1.  Java Singleton Design Pattern Best Practices with Examples @ [https://www.digitalocean.com/community/tutorials/java-singleton-design-pattern-best-practices-examples#singleton-pattern-principles](https://www.digitalocean.com/community/tutorials/java-singleton-design-pattern-best-practices-examples#singleton-pattern-principles)
 
 2.  Java内存模型 @ [Brian Goetz《Java并发编程实战》](https://jcip.net/)
-
-> [!NOTE]
-> 我愿我的生命是一辆牛车
->
-> 清晨嘎吱作响地走在路上
->
-> 当它到达它要去的地方，傍晚
->
-> 开始沿着同一条路返回
