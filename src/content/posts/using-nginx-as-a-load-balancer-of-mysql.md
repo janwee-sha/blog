@@ -9,6 +9,10 @@ category: "系统架构"
 draft: false
 lang: "zh_CN"
 ---
+> 亚洲铜，亚洲铜
+> 祖父死在这里，父亲死在这里，我也将死在这里
+> 你是唯一的一块埋人的地方
+
 ## 引言
 
 在请求量很大的网络应用程序中，我们通常需要部署多个应用实例来缓解应用的工作负载，然后用负载均衡器（硬件或者软件）将请求流量按照特定的负载均衡算法转发到不同的实例。这篇文章是使用 NGINX 作为 MySQL 的 TCP 负载均衡器的实践。
@@ -231,10 +235,3 @@ Nginx支持轮循、最少连接数、IP哈希、通用Hash、最少响应时间
 
 1.  Nginx TCP 和 UDP 负载均衡开发者文档 @ [https://docs.nginx.com/nginx/admin-guide/load-balancer/tcp-udp-load-balancer/](https://docs.nginx.com/nginx/admin-guide/load-balancer/tcp-udp-load-balancer/)
 2.  Demo项目源码 GitHub 仓库 @ [https://github.com/janwee-sha/nginx-mariadb](https://github.com/janwee-sha/nginx-mariadb)
-
-> [!NOTE]
-> 亚洲铜，亚洲铜
->
-> 祖父死在这里，父亲死在这里，我也将死在这里
->
-> 你是唯一的一块埋人的地方
