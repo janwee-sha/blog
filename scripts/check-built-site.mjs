@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { siteOrigin } from "../site.config.mjs";
 
 const repoRoot = path.resolve(
 	path.dirname(fileURLToPath(import.meta.url)),
@@ -8,7 +9,7 @@ const repoRoot = path.resolve(
 );
 const distRoot = path.join(repoRoot, "dist");
 const postsRoot = path.join(repoRoot, "src", "content", "posts");
-const expectedOrigin = "https://janwee.blog";
+const expectedOrigin = siteOrigin;
 const failures = [];
 
 if (!fs.existsSync(distRoot)) {

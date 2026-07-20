@@ -2,11 +2,6 @@
 
 基于 [Astro](https://astro.build/) 与 [Fuwari](https://github.com/saicaca/fuwari) 的静态博客。当前内容以仓库中的 Markdown 为唯一发布源。
 
-- 生产域名：`https://janwee.blog`
-- GitHub：`janwee-sha/blog`
-- 生产分支：`main`
-- 构建输出：`dist`
-
 ## 本地开发
 
 需要 Node.js 22 和 pnpm 9.14.4：
@@ -74,9 +69,6 @@ lang: "zh_CN"
 - Build output directory：`dist`
 - `NODE_VERSION`：`22.22.1`
 - `PNPM_VERSION`：`9.14.4`
-- Custom domain：`janwee.blog`
-
-`janwee-blog.pages.dev` 仅作为平台生产域入口并 301 跳转到主域；分支 Preview 子域保持可访问。
 
 ## 许可证
 
