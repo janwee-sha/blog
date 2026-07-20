@@ -1,6 +1,6 @@
 # Janwee's Blog
 
-基于 [Astro](https://astro.build/) 与 [Fuwari](https://github.com/saicaca/fuwari) 的静态博客。历史内容从 WordPress 迁移而来，当前内容以仓库中的 Markdown 为唯一发布源。
+基于 [Astro](https://astro.build/) 与 [Fuwari](https://github.com/saicaca/fuwari) 的静态博客。当前内容以仓库中的 Markdown 为唯一发布源。
 
 - 生产域名：`https://janwee.blog`
 - GitHub：`janwee-sha/blog`
@@ -76,9 +76,7 @@ lang: "zh_CN"
 - `PNPM_VERSION`：`9.14.4`
 - Custom domain：`janwee.blog`
 
-`janwee-blog.pages.dev` 仅作为平台生产域入口并 301 跳转到主域；分支 Preview 子域保持可访问。`static.janwee.blog` 是已完成验收的临时域，主域切换后不再绑定。
-
-迁移历史见 [MIGRATION_PLAN.md](./MIGRATION_PLAN.md)，主域切换与源站下线步骤见 [MIGRATE_TO_JANWEE_BLOG.md](./MIGRATE_TO_JANWEE_BLOG.md)，Agent 执行规则见 [AGENTS.md](./AGENTS.md)。
+`janwee-blog.pages.dev` 仅作为平台生产域入口并 301 跳转到主域；分支 Preview 子域保持可访问。
 
 ## 许可证
 
