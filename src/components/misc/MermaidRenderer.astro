@@ -35,9 +35,9 @@ async function renderMermaidBlocks() {
 	}
 }
 
-const migrationWindow = window as typeof window & { __janweeMermaidBound?: boolean };
-if (!migrationWindow.__janweeMermaidBound) {
-	migrationWindow.__janweeMermaidBound = true;
+const browserWindow = window as typeof window & { __janweeMermaidBound?: boolean };
+if (!browserWindow.__janweeMermaidBound) {
+	browserWindow.__janweeMermaidBound = true;
 	document.addEventListener("DOMContentLoaded", renderMermaidBlocks);
 	document.addEventListener("swup:enable", () => {
 		window.swup?.hooks.on("page:view", renderMermaidBlocks);

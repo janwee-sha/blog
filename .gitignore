@@ -19,7 +19,7 @@ pnpm-debug.log*
 .env.*
 !.env.example
 
-# local WordPress migration staging and credentials
+# local migration archives, credentials and deployment state
 .migration/
 .wrangler/
 db_password.txt

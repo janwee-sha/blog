@@ -40,11 +40,8 @@ jobs:
       - name: Run TypeScript Check
         run: pnpm type-check
 
-      - name: Run Migration Tests
-        run: pnpm test:migration
-
-      - name: Verify Migrated Content
-        run: pnpm wp:verify
+      - name: Verify Content
+        run: pnpm content:verify
 
       - name: Build Site and Search Index
         run: pnpm build

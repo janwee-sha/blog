@@ -2,6 +2,8 @@
 
 更新时间：2026-07-20
 
+> 本文档记录已经完成的 WordPress 内容迁移与 `static.janwee.blog` 验收过程。当前主域切换、迁移工具清理和源站下线工作以 [MIGRATE_TO_JANWEE_BLOG.md](./MIGRATE_TO_JANWEE_BLOG.md) 为准。
+
 ## 当前实施记录
 
 - Fuwari 上游已固定为提交 `6d39b0dec41282e7852e23e032998a5789abee28`。

@@ -1,8 +1,8 @@
 # Janwee's Blog
 
-基于 [Astro](https://astro.build/) 与 [Fuwari](https://github.com/saicaca/fuwari) 的静态博客，内容从 `janwee.blog` WordPress 站点迁移而来。
+基于 [Astro](https://astro.build/) 与 [Fuwari](https://github.com/saicaca/fuwari) 的静态博客。历史内容从 WordPress 迁移而来，当前内容以仓库中的 Markdown 为唯一发布源。
 
-- 生产域名：`https://static.janwee.blog`
+- 生产域名：`https://janwee.blog`
 - GitHub：`janwee-sha/blog`
 - 生产分支：`main`
 - 构建输出：`dist`
@@ -17,17 +17,17 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-生产校验：
+提交前执行完整校验：
 
 ```bash
-pnpm test:migration
-pnpm wp:verify
+pnpm content:verify
 pnpm check
 pnpm type-check
 pnpm build
 pnpm check:site
-pnpm preview
 ```
+
+需要在浏览器中核对构建结果时，再运行 `pnpm preview`。
 
 ## 发布新文章
 
@@ -35,9 +35,11 @@ pnpm preview
 git switch -c post/<slug>
 pnpm new-post <slug>
 # 编辑 src/content/posts/<slug>.md 并添加所需图片
+pnpm content:verify
 pnpm check
 pnpm type-check
 pnpm build
+pnpm check:site
 git add <相关文件>
 git commit -m "post: <文章标题>"
 git push -u origin post/<slug>
@@ -62,23 +64,9 @@ lang: "zh_CN"
 
 图片可放在 `public/uploads/` 并使用 `/uploads/...` 引用，也可以与文章 Markdown 放在同一目录后使用相对路径引用。
 
-## 重新执行 WordPress 迁移
-
-迁移要求父目录中存在只读 WordPress 数据和名为 `wordpress` 的运行中容器：
-
-```bash
-pnpm wp:export
-pnpm wp:migrate
-pnpm wp:verify
-```
-
-导出快照写入被 Git 忽略的 `.migration/`。迁移脚本只导出公开白名单字段；遇到未知 Elementor 组件或缺失媒体会失败，不会静默丢弃内容。
-
-完整边界和部署说明见 [MIGRATION_PLAN.md](./MIGRATION_PLAN.md)，Agent 执行规则见 [AGENTS.md](./AGENTS.md)。
-
 ## Cloudflare Pages
 
-通过 Git 集成连接本仓库，不要把生产项目创建为 Direct Upload：
+生产项目通过 Git 集成连接本仓库：
 
 - Framework preset：Astro
 - Production branch：`main`
@@ -86,8 +74,11 @@ pnpm wp:verify
 - Build output directory：`dist`
 - `NODE_VERSION`：`22.22.1`
 - `PNPM_VERSION`：`9.14.4`
+- Custom domain：`janwee.blog`
 
-首次部署先验证 `*.pages.dev`，再在 Pages 的 Custom domains 中添加 `static.janwee.blog`。
+`janwee-blog.pages.dev` 仅作为平台生产域入口并 301 跳转到主域；分支 Preview 子域保持可访问。`static.janwee.blog` 是已完成验收的临时域，主域切换后不再绑定。
+
+迁移历史见 [MIGRATION_PLAN.md](./MIGRATION_PLAN.md)，主域切换与源站下线步骤见 [MIGRATE_TO_JANWEE_BLOG.md](./MIGRATE_TO_JANWEE_BLOG.md)，Agent 执行规则见 [AGENTS.md](./AGENTS.md)。
 
 ## 许可证
 
