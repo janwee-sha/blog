@@ -35,6 +35,8 @@ const htmlFiles = walk(distRoot).filter((file) => file.endsWith(".html"));
 const postPages = htmlFiles.filter((file) => file.includes(`${path.sep}posts${path.sep}`) && file.endsWith(`${path.sep}index.html`));
 if (postPages.length !== 17) failures.push(`Expected 17 generated post pages, found ${postPages.length}.`);
 if (fs.existsSync(path.join(distRoot, "privacy", "index.html"))) failures.push("Privacy page must not be generated.");
+const notFoundPage = path.join(distRoot, "404.html");
+if (!fs.existsSync(notFoundPage)) failures.push("A top-level 404.html is required for correct Cloudflare Pages 404 responses.");
 
 for (const file of htmlFiles) {
 	const html = fs.readFileSync(file, "utf8");
