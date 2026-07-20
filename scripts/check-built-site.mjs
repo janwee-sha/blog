@@ -45,6 +45,15 @@ for (const file of htmlFiles) {
 	if (!html.includes(expectedOrigin) && relativeFile !== "404.html") failures.push(`Expected canonical origin is absent in ${relativeFile}.`);
 
 	const pagePath = `/${relativeFile.replace(/index\.html$/, "")}`;
+	const canonicalMatches = [...html.matchAll(/<link\b[^>]*\brel="canonical"[^>]*\bhref="([^"]+)"/g)];
+	if (relativeFile === "404.html") {
+		if (canonicalMatches.length > 0) failures.push("404.html must not advertise a canonical URL.");
+		if (!html.includes('<meta name="robots" content="noindex, nofollow">')) failures.push("404.html must be excluded from indexing.");
+	} else {
+		const expectedCanonical = new URL(pagePath, expectedOrigin).href;
+		if (canonicalMatches.length !== 1) failures.push(`Expected exactly one canonical URL in ${relativeFile}.`);
+		else if (canonicalMatches[0][1] !== expectedCanonical) failures.push(`Incorrect canonical URL in ${relativeFile}: ${canonicalMatches[0][1]}`);
+	}
 	for (const match of html.matchAll(/\b(?:href|src)="([^"]+)"/g)) {
 		const value = match[1];
 		if (/^(?:#|mailto:|data:|javascript:)/.test(value)) continue;
