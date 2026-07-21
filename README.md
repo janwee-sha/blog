@@ -1,4 +1,4 @@
-# Janwee's Blog
+# Janwee 的博客
 
 基于 [Astro](https://astro.build/) 与 [Fuwari](https://github.com/saicaca/fuwari) 的静态博客。
 
