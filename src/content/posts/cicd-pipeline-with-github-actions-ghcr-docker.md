@@ -53,6 +53,15 @@ npm test
 npm run build
 ```
 
+`npm ci` 是 npm 为 CI/CD 环境设计的“干净安装”命令，其中 `ci` 表示 Clean Install。 它会：
+
+- 严格按照 `package-lock.json` 安装固定版本的依赖
+- 安装前删除已有的 `node_modules`
+- 不修改 `package.json` 或 `package-lock.json`
+- 当 `package.json` 与锁文件不一致时直接失败
+
+与 `npm install` 相比，`npm ci` 更稳定、可复现，通常也更快，因此更适合用作 CI/CD。
+
 `npm test` 使用 Vitest 和 jsdom 运行 `src/App.test.tsx` 中的 3 个测试，验证时钟表盘、日期时间和定时刷新行为。`npm run build` 先执行 TypeScript 类型检查，再让 Vite 生成 `dist/`。实际项目还应根据功能复杂度补充端到端测试和浏览器兼容性验证。
 
 ## 3. 构建应用镜像
