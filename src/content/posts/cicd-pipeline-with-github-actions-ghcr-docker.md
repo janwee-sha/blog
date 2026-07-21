@@ -1,5 +1,5 @@
 ---
-title: cicd-pipeline-with-github-actions-ghcr-docker
+title: "使用 GitHub Actions、GHCR、Docker Compose 搭建 CI/CD 管道"
 published: 2026-07-21
 description: '使用 GitHub Actions、GHCR、Docker Compose 在 Linux 主机搭建 CI/CD 管道'
 image: ''
