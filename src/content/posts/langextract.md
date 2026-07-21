@@ -2,7 +2,7 @@
 title: "LangExtract 初探"
 published: 2026-02-25
 updated: 2026-07-21
-description: "试用 Google 开源的 LangExtract：用自然语言和 few-shot 示例定义抽取规则，分别接入 Ollama 与 OpenAI 模型，把《西游记》片段转换为结构化数据，并记录实际效果和不足。"
+description: "试用 Google 开源的 LangExtract：用自然语言和 few-shot 示例定义抽取规则，分别接入 Ollama 与 OpenAI 模型，把《西游记》片段转换为结构化数据，并生成可交互的原文标注页面。"
 image: ""
 tags: ["AI", "LangExtract"]
 category: "AI"
@@ -15,14 +15,14 @@ lang: "zh_CN"
 
 最近关注到 Google 开源的 LangExtract。LangExtract官网对它的介绍为：“一个使用大语言模型从非结构化文本中提取结构化信息的 Python 库，具备精确的源定位和交互式可视化功能。”提取结构化信息是其核心功能，而其亮点则是能够提供精确的源定位，并完成交互式的可视化呈现。
 
-传统 NER 常见的目标是识别人名、地名、组织名。LangExtract 不预设这套标签，而是让开发者用自然语言和示例描述自己关心的内容。比如分析一段小说时，我可以让它找出：
+如果你曾经接触过传统的 NER、关键词抽取或关系抽取，会比较容易理解 LangExtract 的价值。它的重点并不在于完成“识别人名、地名、组织名”这类固定任务，而在于允许开发者直接使用自然语言描述业务化的抽取目标。例如：
 
--   出场人物；
--   人物的别名或称谓；
--   文中明确写出的行为；
--   行为的发起者和承受者。
+-   抽取人物；
+-   抽取人物别名或称谓；
+-   抽取人物行为；
+-   为行为补充执行者、目标等上下文属性。
 
-过去碰到这类需求，往往要写一堆正则和规则，或者准备标注数据训练专用模型。LangExtract 提供了另一条路：先写清楚抽取目标，再给模型看一两个输入、输出示例，然后直接调用大模型。它没有消除信息抽取本身的难度，但确实降低了验证想法的门槛。
+因此，LangExtract 更像是一个**面向业务场景的可编排信息抽取层**。它将抽取任务从传统的规则工程、模型训练或标签体系设计中抽离出来，转化为“定义抽取目标、提供示例、调用模型”的流程。
 
 ## 01.LangExtract 在做什么
 
@@ -379,16 +379,55 @@ grounded_extractions = [
 
 不过，这只能挡住“原文里不存在”的内容，挡不住角色标反、漏抽等语义错误。最终仍然要靠评测数据和人工抽查兜底。
 
+### 5.5.生成交互式可视化页面
+
+逐条打印结果适合调试，但抽取数量多起来以后，很难快速判断实体有没有错位、遗漏或重叠。LangExtract 官方 README 提供了一个更直观的核对方式：先把带有原文位置信息的结果保存为 JSONL，再用 `lx.visualize()` 生成一个自包含的交互式 HTML 页面。
+
+把下面的代码接在前面的 `lx.extract()` 调用之后即可：
+
+```python
+# 1. 将抽取结果保存为 JSONL
+lx.io.save_annotated_documents(
+    [result],
+    output_name="extraction_results.jsonl",
+    output_dir=".",
+)
+
+# 2. 根据 JSONL 生成交互式 HTML
+html_content = lx.visualize("extraction_results.jsonl")
+
+# 3. 写入本地文件
+with open("visualization.html", "w", encoding="utf-8") as f:
+    if hasattr(html_content, "data"):
+        # 在 Jupyter 或 Colab 中，返回值可能是 HTML 展示对象
+        f.write(html_content.data)
+    else:
+        f.write(html_content)
+```
+
+运行完成后，当前目录会多出两个文件：
+
+-   `extraction_results.jsonl`：保留原文、抽取类别、属性和位置等结构化结果，方便后续处理或重新生成页面；
+-   `visualization.html`：可以直接用浏览器打开的可视化页面，不需要另外启动后端服务。
+
+页面会把抽取结果放回原文上下文中进行高亮，并区分不同的抽取类别。浏览时可以在原文和实体信息之间对照，检查某个 `character` 或 `action` 究竟来自哪一段文本。相比终端里的一串字典，这种呈现更适合人工复核；当长文档中存在数百甚至数千条实体时，也更容易定位异常结果。
+
+这里的可视化并没有重新调用模型。`lx.visualize()` 读取的是已经保存的 JSONL，所以可以在调整页面展示或复核结果时反复运行，不会产生新的模型调用费用。另一方面，它展示的是抽取结果和原文之间的对应关系，并不能自动证明属性在语义上正确。例如模型把 `actor` 和 `target` 填反时，页面能帮助我们更快发现问题，但仍然需要人来作出判断。
+
+官方 README 中的 [Visualize the Results](https://github.com/google/langextract/blob/main/README.md#3-visualize-the-results) 示例也采用了相同流程，并说明生成的 HTML 是自包含文件，适合直接分享给其他人复核。
+
 ## 06.总结
 
 LangExtract 的核心价值在于，它将“信息抽取”从传统的规则编写、模型训练或固定标签体系中解放出来，转化为一种更轻量的工程流程：
 
-> 定义抽取目标 → 提供 few-shot 示例 → 调用大语言模型 → 获得结构化结果。
+> 定义抽取目标 → 提供 few-shot 示例 → 调用大语言模型 → 获得结构化结果 → 可视化复核。
 
 本文中的两个示例分别展示了两种常见接入方式：
 
 -   `quick_test_ollama.py`：演示如何接入本地 Ollama 模型；
 -   `quick_test_openai.py`：演示如何接入 OpenAI 模型。
+
+无论底层使用哪种模型，抽取结果都可以保存为统一的 JSONL，并进一步生成交互式 HTML。这个“抽取—定位—复核”的闭环，是 LangExtract 相比只让模型返回 JSON 更实用的地方。
 
 如果项目中存在文本结构化、知识抽取、内容理解、文档解析等需求，LangExtract 值得作为一个轻量级方案进行试验。它并不一定能完全替代传统 NLP 流水线，但在业务规则变化较快、抽取目标高度定制化、样本数据有限的场景中，能够显著降低原型验证和功能迭代成本。
 
