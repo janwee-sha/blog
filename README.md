@@ -24,7 +24,10 @@ pnpm build
 pnpm check:site
 ```
 
-需要在浏览器中核对构建结果时，再运行 `pnpm preview`。
+需要在浏览器中核对构建结果时，再运行：
+```bash
+pnpm preview
+````
 
 ## 个人信息配置
 
