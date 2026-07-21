@@ -1,0 +1,4 @@
+interface:
+  display_name: "Blog Formatter"
+  short_description: "交互式检查并修正 Astro 博客文章的格式、语言与链接"
+  default_prompt: "使用 $blog-formatter 检查指定范围内的文章，先与我确认修复项，再按反馈修改。"
