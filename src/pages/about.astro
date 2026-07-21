@@ -1,7 +1,8 @@
 ---
-
+import { Icon } from "astro-icon/components";
 import { getEntry, render } from "astro:content";
 import Markdown from "@components/misc/Markdown.astro";
+import { profileConfig } from "../config";
 import I18nKey from "../i18n/i18nKey";
 import { i18n } from "../i18n/translation";
 import MainGridLayout from "../layouts/MainGridLayout.astro";
@@ -12,14 +13,426 @@ if (!aboutPost) {
 	throw new Error("About page content not found");
 }
 
-const { Content } = await render(aboutPost);
+const { Content, headings } = await render(aboutPost);
+const pageDescription =
+	"关于 Janwee：一名拥有 7 年开发经验的软件工程师，记录开发实践、技术理解、灵感与爱好。";
 ---
-<MainGridLayout title={i18n(I18nKey.about)} description={i18n(I18nKey.about)}>
-    <div class="flex w-full rounded-[var(--radius-large)] overflow-hidden relative min-h-32">
-        <div class="card-base z-10 px-9 py-6 relative w-full ">
-            <Markdown class="mt-2">
-                <Content />
-            </Markdown>
-        </div>
-    </div>
+
+<MainGridLayout
+	title={i18n(I18nKey.about)}
+	description={pageDescription}
+	headings={headings}
+>
+	<div class="about-page space-y-4">
+		<section class="about-hero card-base" aria-labelledby="about-title">
+			<div class="about-glow about-glow-primary" aria-hidden="true"></div>
+			<div class="about-glow about-glow-secondary" aria-hidden="true"></div>
+
+			<div class="about-portrait-wrap">
+				<div class="about-portrait-frame">
+					<img
+						src={profileConfig.avatar}
+						alt={`${profileConfig.name} 的头像`}
+						width="300"
+						height="300"
+						loading="eager"
+						decoding="async"
+					/>
+				</div>
+				<span class="about-status" aria-label="保持好奇，持续学习">
+					<span aria-hidden="true"></span>
+					持续学习中
+				</span>
+			</div>
+
+			<div class="about-intro">
+				<p class="about-eyebrow">ABOUT ME</p>
+				<h1 id="about-title">
+					你好，我是 <span>{profileConfig.name}</span>
+				</h1>
+				<p class="about-lead">
+					一名拥有 7 年开发经验的软件工程师，喜欢把复杂的问题讲清楚，也把一路学到的东西认真留下。
+				</p>
+
+				<div class="about-tags" aria-label="关注领域">
+					<span><Icon name="fa6-solid:code" />软件开发</span>
+					<span><Icon name="fa6-regular:pen-to-square" />技术写作</span>
+					<span><Icon name="fa6-regular:lightbulb" />保持好奇</span>
+				</div>
+
+				<div class="about-actions">
+					<a
+						class="about-github"
+						href={profileConfig.links[0]?.url}
+						target="_blank"
+						rel="me noopener noreferrer"
+					>
+						<Icon name="fa6-brands:github" />
+						在 GitHub 找到我
+						<Icon name="fa6-solid:arrow-up-right-from-square" />
+					</a>
+					<p class="about-motto">
+						<Icon name="fa6-solid:quote-left" />
+						{profileConfig.bio}
+					</p>
+				</div>
+			</div>
+		</section>
+
+		<section class="about-content card-base" aria-label="更多介绍">
+			<Markdown class="about-prose">
+				<Content />
+			</Markdown>
+		</section>
+	</div>
 </MainGridLayout>
+
+<style>
+	.about-hero {
+		position: relative;
+		isolation: isolate;
+		display: grid;
+		grid-template-columns: 9.5rem minmax(0, 1fr);
+		gap: 2.25rem;
+		align-items: center;
+		padding: 2.5rem;
+		overflow: hidden;
+	}
+
+	.about-glow {
+		position: absolute;
+		z-index: -1;
+		border-radius: 999px;
+		pointer-events: none;
+		filter: blur(1px);
+	}
+
+	.about-glow-primary {
+		width: 23rem;
+		height: 23rem;
+		top: -15rem;
+		right: -8rem;
+		background: oklch(0.72 0.14 var(--hue) / 0.18);
+	}
+
+	.about-glow-secondary {
+		width: 14rem;
+		height: 14rem;
+		bottom: -9rem;
+		left: 2rem;
+		background: oklch(0.82 0.1 calc(var(--hue) + 55) / 0.16);
+	}
+
+	.about-portrait-wrap {
+		position: relative;
+		width: 9.5rem;
+	}
+
+	.about-portrait-frame {
+		aspect-ratio: 1;
+		padding: 0.3rem;
+		border-radius: 1.75rem;
+		background: linear-gradient(
+			145deg,
+			oklch(0.8 0.12 var(--hue)),
+			oklch(0.68 0.15 calc(var(--hue) + 45))
+		);
+		box-shadow: 0 1.25rem 2.5rem oklch(0.25 0.05 var(--hue) / 0.16);
+		transform: rotate(-2deg);
+	}
+
+	.about-portrait-frame img {
+		display: block;
+		width: 100%;
+		height: 100%;
+		border: 0.25rem solid var(--card-bg);
+		border-radius: 1.45rem;
+		object-fit: cover;
+	}
+
+	.about-status {
+		position: absolute;
+		right: -1.25rem;
+		bottom: -0.75rem;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		padding: 0.45rem 0.7rem;
+		border: 0.2rem solid var(--card-bg);
+		border-radius: 999px;
+		background: var(--btn-regular-bg);
+		color: var(--btn-content);
+		font-size: 0.75rem;
+		font-weight: 700;
+		white-space: nowrap;
+		box-shadow: 0 0.5rem 1.25rem oklch(0.2 0.03 var(--hue) / 0.12);
+	}
+
+	.about-status span {
+		width: 0.45rem;
+		height: 0.45rem;
+		border-radius: 999px;
+		background: oklch(0.72 0.16 150);
+		box-shadow: 0 0 0 0.2rem oklch(0.72 0.16 150 / 0.16);
+	}
+
+	.about-intro {
+		min-width: 0;
+	}
+
+	.about-eyebrow {
+		margin: 0 0 0.45rem;
+		color: var(--primary);
+		font-size: 0.72rem;
+		font-weight: 800;
+		letter-spacing: 0.18em;
+	}
+
+	.about-intro h1 {
+		margin: 0;
+		color: oklch(0.28 0.025 var(--hue));
+		font-size: clamp(1.8rem, 5vw, 2.65rem);
+		font-weight: 800;
+		letter-spacing: -0.045em;
+		line-height: 1.15;
+	}
+
+	:global(.dark) .about-intro h1 {
+		color: oklch(0.95 0.01 var(--hue));
+	}
+
+	.about-intro h1 span {
+		color: var(--primary);
+	}
+
+	.about-lead {
+		max-width: 36rem;
+		margin: 0.85rem 0 0;
+		color: rgb(82 82 91);
+		font-size: 1.02rem;
+		line-height: 1.85;
+	}
+
+	:global(.dark) .about-lead {
+		color: rgb(212 212 216 / 0.82);
+	}
+
+	.about-tags {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.55rem;
+		margin-top: 1.25rem;
+	}
+
+	.about-tags span {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		padding: 0.42rem 0.7rem;
+		border-radius: 0.65rem;
+		background: var(--btn-regular-bg);
+		color: var(--btn-content);
+		font-size: 0.78rem;
+		font-weight: 650;
+	}
+
+	.about-tags :global(svg) {
+		width: 0.9rem;
+		height: 0.9rem;
+	}
+
+	.about-actions {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.85rem 1.2rem;
+		margin-top: 1.4rem;
+	}
+
+	.about-github {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.55rem;
+		min-height: 2.7rem;
+		padding: 0.55rem 0.9rem;
+		border-radius: 0.75rem;
+		background: oklch(0.27 0.025 var(--hue));
+		color: white;
+		font-size: 0.85rem;
+		font-weight: 700;
+		text-decoration: none;
+		box-shadow: 0 0.65rem 1.3rem oklch(0.2 0.03 var(--hue) / 0.16);
+		transition:
+			transform 180ms ease,
+			background-color 180ms ease;
+	}
+
+	.about-github:hover {
+		background: oklch(0.35 0.055 var(--hue));
+		transform: translateY(-2px);
+	}
+
+	.about-github:active {
+		transform: translateY(0) scale(0.97);
+	}
+
+	.about-github :global(svg:first-child) {
+		width: 1.15rem;
+		height: 1.15rem;
+	}
+
+	.about-github :global(svg:last-child) {
+		width: 0.68rem;
+		height: 0.68rem;
+		opacity: 0.65;
+	}
+
+	.about-motto {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.55rem;
+		margin: 0;
+		color: rgb(113 113 122);
+		font-size: 0.78rem;
+	}
+
+	:global(.dark) .about-motto {
+		color: rgb(161 161 170);
+	}
+
+	.about-motto :global(svg) {
+		width: 0.8rem;
+		color: var(--primary);
+		opacity: 0.7;
+	}
+
+	.about-content {
+		padding: 1.75rem 2.5rem 2.25rem;
+	}
+
+	.about-content :global(.about-prose) {
+		margin: 0;
+		color: rgb(82 82 91);
+	}
+
+	:global(.dark) .about-content :global(.about-prose) {
+		color: rgb(212 212 216 / 0.82);
+	}
+
+	.about-content :global(.about-prose h2) {
+		position: relative;
+		margin: 1.6rem 0 0.7rem;
+		padding-left: 1rem;
+		color: oklch(0.3 0.025 var(--hue));
+		font-size: 1.2rem;
+		font-weight: 750;
+		letter-spacing: -0.02em;
+	}
+
+	.about-content :global(.about-prose h2:first-child),
+	.about-content :global(.about-prose section:first-child h2) {
+		margin-top: 0;
+	}
+
+	.about-content :global(.about-prose h2::before) {
+		position: absolute;
+		top: 0.28em;
+		bottom: 0.18em;
+		left: 0;
+		width: 0.25rem;
+		border-radius: 999px;
+		background: var(--primary);
+		content: "";
+	}
+
+	:global(.dark) .about-content :global(.about-prose h2) {
+		color: oklch(0.93 0.01 var(--hue));
+	}
+
+	.about-content :global(.about-prose p) {
+		margin: 0.65rem 0 0;
+		line-height: 1.9;
+	}
+
+	.about-content :global(.about-prose ul) {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 0.8rem;
+		margin: 1rem 0 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.about-content :global(.about-prose li) {
+		margin: 0;
+		padding: 1rem;
+		border: 1px solid var(--line-divider);
+		border-radius: 0.85rem;
+		background: var(--btn-card-bg-hover);
+		font-size: 0.88rem;
+		line-height: 1.75;
+	}
+
+	.about-content :global(.about-prose li strong) {
+		display: block;
+		margin-bottom: 0.25rem;
+		color: var(--btn-content);
+		font-size: 0.9rem;
+	}
+
+	.about-content :global(.about-prose a.anchor) {
+		display: none;
+	}
+
+	@media (max-width: 767px) {
+		.about-hero {
+			grid-template-columns: 1fr;
+			gap: 1.8rem;
+			padding: 2rem 1.5rem;
+			text-align: center;
+		}
+
+		.about-portrait-wrap {
+			width: 8.5rem;
+			margin: 0 auto;
+		}
+
+		.about-status {
+			right: -1.55rem;
+		}
+
+		.about-eyebrow {
+			margin-bottom: 0.55rem;
+		}
+
+		.about-lead {
+			margin-right: auto;
+			margin-left: auto;
+			font-size: 0.95rem;
+		}
+
+		.about-tags,
+		.about-actions {
+			justify-content: center;
+		}
+
+		.about-motto {
+			width: 100%;
+			justify-content: center;
+		}
+
+		.about-content {
+			padding: 1.5rem;
+		}
+
+		.about-content :global(.about-prose ul) {
+			grid-template-columns: 1fr;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.about-github {
+			transition: none;
+		}
+	}
+</style>
