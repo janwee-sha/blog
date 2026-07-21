@@ -6,7 +6,7 @@ description: "CI/CD 的全称是持续集成/持续交付（Continuous Integrati
 image: ""
 tags: ["CI/CD 管道", "Docker", "Jenkins"]
 category: "DevOps"
-draft: false
+draft: true
 lang: "zh_CN"
 ---
 > 道虽迩，不行不至；事虽小，不为不成。
