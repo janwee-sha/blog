@@ -2,7 +2,7 @@
 title: "使用 Nginx 作为 MySQL 的 TCP 负载均衡器"
 published: 2023-04-24
 updated: 2024-04-06
-description: "在请求量很大的网络应用程序中，我们通常需要部署多个应用实例来缓解应用的工作负载，然后用负载均衡器（硬件或者软件）将请求流量按照特定的负载均衡算法转发到不同的实例。这篇文章是使用 NGINX 作为 MySQL 的 TCP 负载均衡器的实践。"
+description: "本文演示如何使用 Nginx 在 MySQL 主从复制架构中实现基于端口的 TCP 读写分流：读连接分发到主、从节点，写连接只转发到主节点。"
 image: ""
 tags: ["Load Balancer", "MySQL", "Nginx"]
 category: "系统架构"
@@ -10,25 +10,27 @@ draft: false
 lang: "zh_CN"
 ---
 > 亚洲铜，亚洲铜
-> 
+>
 > 祖父死在这里，父亲死在这里，我也将死在这里
-> 
+>
 > 你是唯一的一块埋人的地方
+>
+> ——海子《亚洲铜》
 
 ## 引言
 
-在请求量很大的网络应用程序中，我们通常需要部署多个应用实例来缓解应用的工作负载，然后用负载均衡器（硬件或者软件）将请求流量按照特定的负载均衡算法转发到不同的实例。这篇文章是使用 NGINX 作为 MySQL 的 TCP 负载均衡器的实践。
+在请求量很大的网络应用程序中，我们通常需要部署多个应用实例来缓解应用的工作负载，然后用负载均衡器（硬件或者软件）将请求流量按照特定的负载均衡算法转发到不同的实例。这篇文章是使用 Nginx 作为 MySQL 的 TCP 负载均衡器的实践。
 
 使用负载均衡器的好处：
 
 1.  对数据库进行负载均衡，避免数据库过载。
 2.  应用程序可以使用同样的 IP 或者主机名访问集群中的所有数据库。
 3.  如果一个节点崩溃，可以绕过该节点并保持应用持续运行。
-4.  横向扩展比纵向扩展更简单
+4.  横向扩展比纵向扩展更简单。
 
 ## 配置读写分离
 
-为了演示如何使用Nginx配置MySQL主从架构下的读写分离，我将使用 Docker Compose 在 Linux 系统中启动3个 MySQL 实例（1个主节点和2个从节点）和1个 NGINX 实例，将读请求分发到MySQL的主节点和从节点，将写请求分发到MySQL主节点实例。
+为了演示如何使用 Nginx 在 MySQL 主从复制架构中按端口实现读写分流，我将使用 Docker Compose 在 Linux 系统中启动 3 个 MySQL 实例（1 个主节点和 2 个从节点）及 1 个 Nginx 实例：将发往 `3306` 端口的读连接分发到主、从节点，将发往 `33060` 端口的写连接转发到主节点。
 
 ```mermaid
 flowchart TD
@@ -45,7 +47,7 @@ flowchart TD
 
 Docker Compose 启动文件 `docker-compose.yml` 如下：
 
-```html
+```yaml
 version: '3.8'
 
 networks:
@@ -115,11 +117,11 @@ services:
       - nginx_mariadb
 ```
 
-这里使用 bitnami 的镜像是因为更容易部署 MySQL 主从复制架构。主节点的主机名是 `master.janwee.ubuntu`,两个从节点的主机名是 `slave0.janwee.ubuntu`和`slave1.janwee.ubuntu`。将所有MySQL节点和Nginx节点都放在同一个网络下，在 NGINX 负载均衡器中暴露 `3306` 和 `33060` 端口。
+这里使用 Bitnami 的镜像是因为更容易部署 MySQL 主从复制架构。主节点的主机名是 `master.janwee.ubuntu`，两个从节点的主机名是 `slave0.janwee.ubuntu` 和 `slave1.janwee.ubuntu`。将所有 MySQL 节点和 Nginx 节点都放在同一个网络下，在 Nginx 负载均衡器中暴露 `3306` 和 `33060` 端口。
 
-NGINX 节点中的 `volumes` 选项将配置文件 `nginx/nginx.conf` 挂载到容器内部：
+Nginx 节点中的 `volumes` 选项将配置文件 `nginx/nginx.conf` 挂载到容器内部：
 
-```html
+```nginx
 worker_processes 1;
 
 # Configuration of connection processing
@@ -161,7 +163,7 @@ stream {
 
 这里设置了两个输入流：`read` 和 `write`。`read` 同时指向主节点和两个从节点，`write` 指向主节点。
 
-然后将 nginx 主机名 `janwee.ubuntu` 加入本地 DNS 配置文件 `/etc/hosts`中，在 Linux 终端中使用如下命令：
+然后将 Nginx 主机名 `janwee.ubuntu` 加入本地 DNS 配置文件 `/etc/hosts` 中，在 Linux 终端中使用如下命令：
 
 ```text
 echo "127.0.0.1 janwee.ubuntu" >> /etc/hosts
@@ -223,17 +225,17 @@ $ mysql -h janwee.ubuntu -P 33060 -u root -pjanwee -e "select @@hostname";
 +----------------------+
 ```
 
-测试结果表明，当连接 `3306` 端口时 NGINX 会在主节点和从节点之间变更，而连接 `33060` 时只会连接到主节点。
+测试结果表明，发往 `3306` 端口的连接会由 Nginx 轮询转发到主节点和两个从节点；发往 `33060` 端口的连接只会转发到主节点。
 
-## 使用不同的Nginx负载均衡策略
+## 使用不同的 Nginx 负载均衡策略
 
-Nginx支持轮循、最少连接数、IP哈希、通用Hash、最少响应时间、随机、权重等多种负载均衡策略。
+Nginx Stream 提供加权轮询（默认）、最少连接数、哈希、最少响应时间（`least_time`）和随机等方法，也可为上游服务器设置权重；具体可用范围取决于版本。
 
-可以参考 [Nginx TCP和UDP开发者文档](https://docs.nginx.com/nginx/admin-guide/load-balancer/tcp-udp-load-balancer/) 配置不同的负载均衡算法。
+可以参考 [Nginx TCP 和 UDP 开发者文档](https://docs.nginx.com/nginx/admin-guide/load-balancer/tcp-udp-load-balancer/) 配置不同的负载均衡算法。
 
-完整的代码和文件可以在 [我的GitHub项目](https://github.com/janwee-sha/nginx-mariadb) 上查看。
+完整的代码和文件可以在 [我的 GitHub 项目](https://github.com/janwee-sha/nginx-mariadb) 上查看。
 
-## 引用 & 资源
+## 引用与资源
 
 1.  Nginx TCP 和 UDP 负载均衡开发者文档 @ [https://docs.nginx.com/nginx/admin-guide/load-balancer/tcp-udp-load-balancer/](https://docs.nginx.com/nginx/admin-guide/load-balancer/tcp-udp-load-balancer/)
-2.  Demo项目源码 GitHub 仓库 @ [https://github.com/janwee-sha/nginx-mariadb](https://github.com/janwee-sha/nginx-mariadb)
+2.  Demo 项目源码 GitHub 仓库 @ [https://github.com/janwee-sha/nginx-mariadb](https://github.com/janwee-sha/nginx-mariadb)
