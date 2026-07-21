@@ -1,25 +1,27 @@
 ---
 title: "在 RabbitMQ 中实现延迟消息"
 published: 2023-12-08
-updated: 2024-01-23
-description: "1\\. 在 RabbitMQ 中实现延迟消息的方式 使用消息中间件实现延迟消息在程序开发中是一个很常见的需求。如果你使用的是 RabbitMQ 作为消息中间件的话，很不幸，它并没有提供原生的延迟消息机制。好消息是我们可以通过一些技术手段来实现延迟消息的效果。常见的实现方式有如下两种： 使用 RabbitMQ 的死信队列（Dead Letter Exchange）和 TTL"
+updated: 2026-07-22
+description: "介绍如何结合 RabbitMQ 的死信交换机（DLX）与消息 TTL 实现延迟消息，并通过 Java 客户端示例演示生产和消费流程。"
 image: ""
 tags: ["RabbitMQ", "延迟消息"]
 category: "消息中间件"
 draft: false
 lang: "zh_CN"
 ---
-## 1\. 在 RabbitMQ 中实现延迟消息的方式
+> 君子藏器于身，待时而动
+>
+> ——《周易·系辞下》
 
-使用消息中间件实现延迟消息在程序开发中是一个很常见的需求。如果你使用的是 RabbitMQ 作为消息中间件的话，很不幸，它并没有提供原生的延迟消息机制。好消息是我们可以通过一些技术手段来实现延迟消息的效果。常见的实现方式有如下两种：
+## 01. 引言
 
--   使用 RabbitMQ 的死信队列（Dead Letter Exchange）和 TTL（Time-To-Live）来模拟延迟队列
+在应用开发中，使用消息中间件实现延迟消息是一项常见需求。开源版 RabbitMQ 本身没有通用的原生延迟消息机制，常见做法是结合死信交换机（Dead Letter Exchange，DLX）和 TTL（Time-To-Live）模拟延迟队列。
 
--   使用 RabbitMQ Delayed Message 插件（本质上是 RabbitMQ 基于前一种方式提供的开箱即用的插件）
+RabbitMQ Delayed Message 插件曾提供 `x-delayed-message` 交换机，但该项目已于 2026 年停止维护，不再适合新项目。RabbitMQ 团队目前建议根据场景选择 DLX 与 TTL、VMware Tanzu RabbitMQ 的 delayed queues 或外部调度器。
 
-## 2\. 结合 DLX 和 TTL 模拟延迟队列
+## 02. 结合 DLX 和 TTL 模拟延迟队列
 
-死信队列和 TTL 结合的方案的原理是：消息会先发送到主队列，但是由于设置了 TTL，如果消息在指定的时间内没有被消费，则会变成死信，进入死信队列。死信队列再绑定到实际需要接收延迟消息的队列，从而实现了延迟队列的效果。
+DLX 与 TTL 结合方案的原理是：消息先进入入口队列；消息到期后成为死信，由该队列配置的死信交换机重新发布并路由到实际消费延迟消息的队列，从而实现延迟效果。
 
 基于上述原理，我们使用 RabbitMQ 的 Java 客户端来模拟一个消息被发布后经过 5 秒才能被消费的延迟队列。
 
@@ -59,7 +61,7 @@ public class DelayedMessageProducer {
 }
 ```
 
-上述程序中，我们创建了一个主队列、一个 Fanout 类型的交换机以及绑定到该交换机的队列，主队列用于接收消息生产者发布的消息，Fanout 类型的交换机为主队列的死信交换机。然后，我们向主队列发送 10 次以当前时间戳为消息体、TTL 为 5000 毫秒的消息。
+上述程序中，我们创建了一个主队列、一个 Fanout 类型的交换机以及绑定到该交换机的队列，主队列用于接收消息生产者发布的消息，Fanout 类型的交换机为主队列的死信交换机。然后，我们向主队列发送 10 条以当前时间戳为消息体、TTL 为 5000 毫秒的消息。
 
 当消息发送到主队列后，由于没有被消费，5 秒后消息会变成死信，被发送至队列的死信交换机并被路由至绑定到该死信交换机的队列。
 
@@ -75,15 +77,13 @@ public class DelayedMessageConsumer {
              Channel channel = connection.createChannel()) {
             channel.queueDeclare(DELAYED_QUEUE, false, false, false, null);
             System.out.println("[*] Waiting for messages.");
-            long startBy = System.currentTimeMillis();
-            while (System.currentTimeMillis() - startBy < 30000) {
-                channel.basicConsume(DELAYED_QUEUE, true, (tag, delivery) -> {
-                    System.out.printf("[*] Delayed queue received message %s after %d milliseconds.\n",
-                            delivery.getEnvelope().getDeliveryTag(),
-                            (System.currentTimeMillis() - Long.parseLong(new String(delivery.getBody()))));
-                }, tag -> {
-                });
-            }
+            channel.basicConsume(DELAYED_QUEUE, true, (tag, delivery) -> {
+                System.out.printf("[*] Delayed queue received message %s after %d milliseconds.\n",
+                        delivery.getEnvelope().getDeliveryTag(),
+                        (System.currentTimeMillis() - Long.parseLong(new String(delivery.getBody()))));
+            }, tag -> {
+            });
+            Thread.sleep(30000);
         }
     }
 }
@@ -107,6 +107,11 @@ public class DelayedMessageConsumer {
 
 可以看到每条消息从生产到消费都经过了至少 5000 毫秒。
 
+需要注意的是，使用每条消息的 TTL 时，过期消息只有到达队首时才会被丢弃或死信化。因此，同一队列中混用不同 TTL 时，短 TTL 消息可能被前面的长 TTL 消息阻塞；这种方案更适合固定或有限档位的延迟场景。
+
 ## 引用
 
-1.  [https://blog.rabbitmq.com/posts/2015/04/scheduling-messages-with-rabbitmq/](https://blog.rabbitmq.com/posts/2015/04/scheduling-messages-with-rabbitmq/)
+1.  [RabbitMQ：Time-To-Live and Expiration](https://www.rabbitmq.com/docs/ttl)
+2.  [RabbitMQ：Dead Letter Exchanges](https://www.rabbitmq.com/docs/dlx)
+3.  [Álvaro Videla：Scheduling Messages with RabbitMQ（2015-04-16）](https://www.rabbitmq.com/blog/2015/04/16/scheduling-messages-with-rabbitmq)
+4.  [RabbitMQ Delayed Message Plugin（已停止维护）](https://github.com/rabbitmq/rabbitmq-delayed-message-exchange)
