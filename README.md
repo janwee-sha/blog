@@ -2,6 +2,8 @@
 
 基于 [Astro](https://astro.build/) 与 [Fuwari](https://github.com/saicaca/fuwari) 的静态博客。
 
+本仓库所基于的 Fuwari 项目说明见 [Fuwari README](docs/fuwari/README.md)。
+
 ## 本地开发
 
 需要 Node.js 22 和 pnpm 9.14.4：
