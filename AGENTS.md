@@ -1,6 +1,8 @@
-# AI Agent 工作指引
+# AI Agent 工作协议
 
-本仓库是从本机 WordPress 迁移而来的 Fuwari/Astro 静态博客。
+本文件是本仓库面向 AI Agent 的工作协议入口。
 
-`docs/` 目录中包含 [Astro](https://astro.build/) 与 [Fuwari](https://github.com/saicaca/fuwari) 的一些基本信息。
-`README.md` 中包含项目的一些基本信息。
+## 协议层级
+
+- `README.md` 中包含项目的一些基本信息。
+- `docs/` 目录中包含 [Astro](https://astro.build/) 与 [Fuwari](https://github.com/saicaca/fuwari) 的一些基本信息。
