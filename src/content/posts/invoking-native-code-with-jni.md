@@ -55,7 +55,6 @@ jni-with-c
 ```java
 public class CCodeCaller {
     static {
-        // Windows: hello_from_c.dll; Linux: libhello_from_c.so; macOS: libhello_from_c.dylib
         System.loadLibrary("hello_from_c");
     }
 
