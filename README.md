@@ -26,6 +26,12 @@ pnpm check:site
 
 需要在浏览器中核对构建结果时，再运行 `pnpm preview`。
 
+## 个人信息配置
+
+笔名、职业、头像、Bio、从业起始日期、关注领域和社交链接统一配置在
+[`src/me.config.ts`](src/me.config.ts)。工作年限会根据 `careerStartedAt` 按完整周年自动计算，
+并在构建时写入页面。
+
 ## 发布新文章
 
 ```bash
