@@ -89,7 +89,37 @@ HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=3 \
     CMD wget -q -O /dev/null http://127.0.0.1/ || exit 1
 ```
 
-第一阶段安装锁定依赖并生成 Vite 生产构建；运行阶段只包含 Nginx 和 `dist/` 中的静态文件，不包含源码、Node.js 或 npm。Docker 会定期访问应用根路径并维护 `healthy` 或 `unhealthy` 状态；部署脚本将以这个状态判断新版本能否接管服务。
+上面的 `Dockerfile` 使用“多阶段构建”：第一阶段编译 React 应用，第二阶段只用 NGINX 提供生成的静态文件。各指令的作用如下：
+
+a. `FROM node:22-alpine AS build` 以 Node.js 22 的 Alpine 镜像作为构建环境，并将该阶段命名为 `build`。Alpine 版本体积较小。
+
+b. `WORKDIR /app` 将容器内的工作目录设置为 `/app`。后续的 `COPY`、`RUN` 等指令默认在这里执行。
+
+c. `COPY package.json package-lock.json ./` 先只复制依赖清单和锁文件。这样源码变化但依赖未变化时，Docker 可以复用依赖安装层的缓存。指令前两个引用路径是构建上下文中的源路径，最后一个引用路径表示的是镜像内的目标路径。
+
+d. `RUN npm ci` 严格按照 `package-lock.json` 安装依赖。锁文件与 `package.json` 不一致时会失败，适合可复现的镜像构建。
+
+e. `COPY . .` 将构建上下文中的其余文件复制到 `/app`。`.dockerignore` 中排除的文件不会被复制。
+
+f. `RUN npm run build` 执行项目的生产构建命令：
+
+g. `FROM nginx:stable-alpine` 开始一个全新的运行阶段，使用官方 NGINX Alpine 镜像。新阶段不会自动包含前一阶段的 Node.js、npm、源码或依赖，因此最终镜像更小，攻击面也更少。
+
+h. `COPY --from=build /app/dist /usr/share/nginx/html` 只把 `build` 阶段生成的静态文件复制到 NGINX 默认网站目录。 容器启动后，NGINX 会直接提供其中的 `index.html`、JavaScript 和 CSS 文件。
+
+i. `EXPOSE 80` 声明应用在容器内使用 HTTP 端口 `80`。 它只是镜像元数据，不会自动把端口开放到宿主机。运行时仍需映射端口。
+
+j. `HEALTHCHECK` 指令定义容器健康检查：
+
+    - `--interval=10s`：每 10 秒检查一次。
+    - `--timeout=3s`：单次检查最多等待 3 秒。
+    - `--start-period=10s`：启动后的前 10 秒为宽限期。
+    - `--retries=3`：连续失败 3 次后标记为 unhealthy。
+    - `wget -q`：安静地请求 NGINX 根路径。
+    - `-O /dev/null`：丢弃响应内容。
+    - `|| exit 1`：请求失败时返回非零退出码。
+
+Docker 会定期访问应用根路径并维护 `healthy` 或 `unhealthy` 状态；部署脚本将以这个状态判断新版本能否接管服务。
 
 再创建 `.dockerignore`，避免把本地依赖、Git 历史和已有构建产物发送给 BuildKit：
 
