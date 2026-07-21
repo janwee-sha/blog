@@ -9,7 +9,7 @@ import { LinkPreset } from "./types/config";
 
 export const siteConfig: SiteConfig = {
 	title: "Janwee's Blog",
-	subtitle: "A Personal Blog for Sharing Views, Ideas, and Discoveries.",
+	subtitle: "分享知识，分享见解，分享爱好",
 	lang: "zh_CN", // Language code, e.g. 'en', 'zh_CN', 'ja', etc.
 	themeColor: {
 		hue: 250, // Default hue for the theme color, from 0 to 360. e.g. red: 0, teal: 200, cyan: 250, pink: 345
@@ -52,7 +52,7 @@ export const navBarConfig: NavBarConfig = {
 export const profileConfig: ProfileConfig = {
 	avatar: "/uploads/2025/07/my_avatar-300x300.jpg", // Relative to the /src directory. Relative to the /public directory if it starts with '/'
 	name: "Janwee",
-	bio: "A Personal Blog for Sharing Views, Ideas, and Discoveries.",
+	bio: "知者行之始，行者知之成",
 	links: [
 		{
 			name: "GitHub",
