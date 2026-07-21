@@ -1,6 +1,6 @@
 # Janwee's Blog
 
-基于 [Astro](https://astro.build/) 与 [Fuwari](https://github.com/saicaca/fuwari) 的静态博客。当前内容以仓库中的 Markdown 为唯一发布源。
+基于 [Astro](https://astro.build/) 与 [Fuwari](https://github.com/saicaca/fuwari) 的静态博客。
 
 ## 本地开发
 
@@ -40,7 +40,7 @@ git commit -m "post: <文章标题>"
 git push -u origin post/<slug>
 ```
 
-提交 Pull Request 后，Cloudflare Pages 会生成预览部署；合并到 `main` 后自动构建并发布到生产域名。回滚优先使用 `git revert`，不要改写 `main` 历史。
+提交 Pull Request 后，Cloudflare Pages 会生成预览部署；合并到 `main` 后自动构建并发布到生产域名。
 
 文章 frontmatter 示例：
 
@@ -57,7 +57,7 @@ lang: "zh_CN"
 ---
 ```
 
-图片可放在 `public/uploads/` 并使用 `/uploads/...` 引用，也可以与文章 Markdown 放在同一目录后使用相对路径引用。
+图片可放在 `public/uploads/` 并使用相对路径引用。
 
 ## Cloudflare Pages
 
