@@ -147,6 +147,44 @@ def unquote_scalar(value: str) -> str:
     return value
 
 
+def recent_posts(root: Path, count: int) -> list[dict[str, str]]:
+    if count < 1:
+        raise ValueError("recent post count must be at least 1")
+
+    posts_root = (root / "src/content/posts").resolve()
+    if not posts_root.is_dir():
+        raise ValueError(f"posts directory not found: {posts_root}")
+
+    summaries: list[dict[str, str]] = []
+    for post in all_posts(posts_root):
+        relative = post.relative_to(root).as_posix()
+        try:
+            source = post.read_text(encoding="utf-8")
+        except UnicodeDecodeError as error:
+            raise ValueError(f"post is not valid UTF-8: {relative}") from error
+
+        _, frontmatter = split_frontmatter(source.splitlines(keepends=True))
+        fields = parse_frontmatter(frontmatter, relative, [])
+        published = unquote_scalar(fields.get("published", ("", 0))[0]).strip()
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", published):
+            raise ValueError(f"post has no valid YYYY-MM-DD published date: {relative}")
+
+        summaries.append(
+            {
+                "scope": post.relative_to(posts_root).with_suffix("").as_posix(),
+                "file": relative,
+                "title": unquote_scalar(fields.get("title", (post.stem, 0))[0]).strip(),
+                "published": published,
+                "updated": unquote_scalar(fields.get("updated", ("", 0))[0]).strip(),
+            }
+        )
+
+    if not summaries:
+        raise ValueError("no Markdown or MDX posts found")
+    summaries.sort(key=lambda item: (item["published"], item["scope"]), reverse=True)
+    return summaries[:count]
+
+
 def mask_prose(line: str) -> str:
     masked = line
     masked = re.sub(r"`+[^`]*`+", lambda match: " " * len(match.group(0)), masked)
@@ -334,11 +372,29 @@ def render_text(files: list[Path], root: Path, diagnostics: list[Diagnostic], ur
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", default=".", help="repository root (default: current directory)")
-    parser.add_argument("--scope", required=True, help="all, slug, filename, or repo-relative path")
+    selection = parser.add_mutually_exclusive_group(required=True)
+    selection.add_argument("--scope", help="all, slug, filename, or repo-relative path")
+    selection.add_argument("--recent", type=int, metavar="COUNT", help="list the most recently published posts")
     parser.add_argument("--format", choices=("text", "json"), default="text")
     args = parser.parse_args()
 
     root = Path(args.root).expanduser().resolve()
+    if args.recent is not None:
+        try:
+            posts = recent_posts(root, args.recent)
+        except ValueError as error:
+            print(f"error: {error}", file=sys.stderr)
+            return 2
+
+        if args.format == "json":
+            payload = {"root": str(root), "recent": args.recent, "posts": posts}
+            print(json.dumps(payload, ensure_ascii=False, indent=2))
+        else:
+            print(f"Most recently published {len(posts)} post(s):")
+            for post in posts:
+                print(f'- {post["scope"]}: {post["title"]} ({post["published"]})')
+        return 0
+
     try:
         files = resolve_scope(root, args.scope)
     except ValueError as error:

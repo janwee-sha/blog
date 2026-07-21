@@ -14,7 +14,22 @@ Interpret the prompt-level `scope` input:
 - `scope=all`: select every `.md` and `.mdx` file recursively under `src/content/posts/`.
 - `scope=<slug|filename|repo-relative-path>`: select exactly one post. Accept values such as `langextract`, `langextract.md`, or `src/content/posts/langextract.md`.
 
-If the prompt clearly names one post, infer that single-post scope. If it explicitly says all posts, infer `all`. Otherwise ask for `scope`; never silently expand an ambiguous request to all posts.
+If the prompt clearly names one post, infer that single-post scope. If it explicitly says all posts, infer `all`. Otherwise collect the scope with this selection workflow; never silently expand an ambiguous request to all posts:
+
+1. Find the repository root, then get the one most recently published post with the read-only helper. The helper orders posts by the frontmatter `published` date, not filesystem timestamps, and returns a usable scope value:
+
+   ```bash
+   python3 <skill-dir>/scripts/audit_posts.py --root <repo-root> --recent 1 --format json
+   ```
+
+2. When an interactive input tool with fixed choices and a built-in free-form choice is available, show these user-facing choices:
+   - the returned post scope, such as `langextract` (recommend this choice and describe it with the title and publication date);
+   - `所有文章` (map it to `scope=all`);
+   - the tool's built-in free-form choice, presented as `自行输入`, where the user can enter a slug, filename, or repository-relative path.
+3. Pass only the latest-post and `所有文章` choices as fixed options. Do not create `自行输入` as a fixed option: use the tool's native free-form option so selecting it opens an input field. List only one concrete post by default.
+4. If no such interactive tool is available, ask one concise plain-text question with `所有文章`, the latest post scope, and `自行输入（请回复 slug、文件名或仓库相对路径）` as the three choices.
+
+Resolve the label dynamically on every ambiguous invocation. Do not hard-code `langextract`; it is only the expected label while that post remains the newest by `published`.
 
 Do not accept or invent `check` and `fix` modes. Use the required phased workflow every time.
 
