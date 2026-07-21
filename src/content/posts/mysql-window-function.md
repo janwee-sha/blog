@@ -38,26 +38,26 @@ window_spec:
 
 窗口函数一般可分为聚合窗口函数和分析窗口函数。
 
-聚合窗口函数包括 SUM、COUNT、AVG、MIN 和 MAX 等，通常返回一个标量值。
+聚合窗口函数包括 `SUM()`、`COUNT()`、`AVG()`、`MIN()` 和 `MAX()` 等，通常返回一个标量值。
 
-分析窗口函数又可分为排序函数和值函数，根据当前行建立记录窗口，然后使用该窗口计算结果。输出结果通常是一组记录。例如 RANK、DENSE\_RANK、ROW\_NUMBER、CUME\_DIST、LAG、LEAD 等。
+分析窗口函数又可分为排序函数和值函数，根据当前行建立记录窗口，然后使用该窗口计算结果。输出结果通常是一组记录。例如 `RANK()`、`DENSE_RANK()`、`ROW_NUMBER()`、`CUME_DIST()`、`LAG()`、`LEAD()` 等。
 
 值函数有：
 
--   FIRST\_VALUE()
--   LAST\_VALUE()
--   NTH\_VALUE()
+-   `FIRST_VALUE()`
+-   `LAST_VALUE()`
+-   `NTH_VALUE()`
 
 标准 SQL 规定，对整个分区进行操作的窗口函数不应包含框架子句。MySQL 允许此类函数使用框架子句，但会忽略它。即使指定了框架，这些函数也会使用整个分区，包括：
 
--   CUME\_DIST()
--   DENSE\_RANK()
--   LAG()
--   LEAD()
--   NTILE()
--   PERCENT\_RANK()
--   RANK()
--   ROW\_NUMBER()
+-   `CUME_DIST()`
+-   `DENSE_RANK()`
+-   `LAG()`
+-   `LEAD()`
+-   `NTILE()`
+-   `PERCENT_RANK()`
+-   `RANK()`
+-   `ROW_NUMBER()`
 
 ### 2.2. PARTITION BY 子句
 
@@ -132,7 +132,7 @@ frame_extent 表示框架的起点和终点。只指定 frame_start 时，当前
 +----+-----------+-------+------------+
 ```
 
-### 3.1. SUM 和 AVG
+### 3.1. `SUM()` 和 `AVG()`
 
 下面的查询演示了怎样使用移动框架行计算每名学生按时间排序的当前总分数，以及根据最近得分的滚动平均值：
 
@@ -164,7 +164,7 @@ ORDER BY `name`, `test_time`;
 +------------+-------------+-------+---------------+----------------+
 ```
 
-### 3.2. RANK 和 DENSE\_RANK
+### 3.2. `RANK()` 和 `DENSE_RANK()`
 
 列出每次考试的分数排名情况（相同分数时排名相同）：
 
