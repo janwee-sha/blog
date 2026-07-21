@@ -21,6 +21,12 @@ LINK_RE = re.compile(r"!?\[[^\]\n]*\]\(([^)\n]+)\)")
 HTML_LINK_RE = re.compile(r"\b(?:href|src)\s*=\s*([\"'])(.*?)\1", re.IGNORECASE)
 URL_RE = re.compile(r"https?://[^\s<>()\[\]{}\"']+")
 AUTOLINK_RE = re.compile(r"<(https?://[^ >]+)>")
+EPIGRAPH_QUOTE_RE = re.compile(r"> \S(?:.*\S)?$")
+EPIGRAPH_ATTRIBUTION_RE = re.compile(r"> ——《[^《》]+》$")
+CHAPTER_RE = re.compile(r"(\d{2})\. (\S.*)$")
+SUBSECTION_RE = re.compile(r"(\d+)\.(\d+)\. (\S.*)$")
+REFERENCE_ENTRY_RE = re.compile(r"(\d+)\.  (\S.*)$")
+BOOK_REFERENCE_RE = re.compile(r"《[^《》]+》（[^（）]+ 著，[^（）]+）$")
 
 
 @dataclass(frozen=True)
@@ -245,6 +251,220 @@ def inspect_local_target(
         add(diagnostics, "error", "missing-local-target", relative, line_number, f"relative target does not exist: {destination}")
 
 
+def inspect_canonical_structure(
+    lines: list[str],
+    body_start: int,
+    headings: list[tuple[int, int, str]],
+    relative: str,
+    diagnostics: list[Diagnostic],
+) -> None:
+    first_body_index = body_start
+    while first_body_index < len(lines) and not lines[first_body_index].strip():
+        first_body_index += 1
+
+    epigraph_line = min(first_body_index + 1, max(len(lines), 1))
+    epigraph = [
+        lines[offset].rstrip("\r\n") if offset < len(lines) else ""
+        for offset in range(first_body_index, first_body_index + 3)
+    ]
+    if not epigraph[0].startswith(">"):
+        add(
+            diagnostics,
+            "warning",
+            "missing-opening-epigraph",
+            relative,
+            epigraph_line,
+            "body should open with a sourced classical quotation before the first chapter",
+        )
+    elif not (
+        EPIGRAPH_QUOTE_RE.fullmatch(epigraph[0])
+        and epigraph[1] == ">"
+        and EPIGRAPH_ATTRIBUTION_RE.fullmatch(epigraph[2])
+    ):
+        add(
+            diagnostics,
+            "warning",
+            "invalid-opening-epigraph",
+            relative,
+            epigraph_line,
+            "opening epigraph should be `> 名句`, `>`, then `> ——《典籍·篇名》`",
+        )
+
+    body_headings = [heading for heading in headings if heading[1] >= body_start + 1]
+    for level, line_number, title in body_headings:
+        if level not in {2, 3}:
+            add(
+                diagnostics,
+                "warning",
+                "noncanonical-heading-level",
+                relative,
+                line_number,
+                f"canonical body structure uses H2 chapters and H3 subsections, found H{level}: {title}",
+            )
+
+    h2_headings = [heading for heading in body_headings if heading[0] == 2]
+    numbered_chapters: list[tuple[int, int, str]] = []
+    reference_heading: tuple[int, int, str] | None = None
+    expected_chapter = 1
+    for heading in h2_headings:
+        _, line_number, title = heading
+        if title == "引用":
+            reference_heading = heading
+            continue
+        match = CHAPTER_RE.fullmatch(title)
+        if not match:
+            add(
+                diagnostics,
+                "warning",
+                "invalid-chapter-heading",
+                relative,
+                line_number,
+                "H2 chapter should use `## NN. 标题`; reserve unnumbered `## 引用` for references",
+            )
+            continue
+        chapter_number = int(match.group(1))
+        numbered_chapters.append((chapter_number, line_number, match.group(2)))
+        if chapter_number != expected_chapter:
+            add(
+                diagnostics,
+                "warning",
+                "nonconsecutive-chapter-number",
+                relative,
+                line_number,
+                f"expected chapter {expected_chapter:02d}, found {chapter_number:02d}",
+            )
+        expected_chapter = chapter_number + 1
+
+    if not numbered_chapters:
+        add(
+            diagnostics,
+            "warning",
+            "missing-numbered-chapters",
+            relative,
+            body_start + 1,
+            "body should contain consecutively numbered H2 chapters",
+        )
+    else:
+        first_number, first_line, first_title = numbered_chapters[0]
+        if first_number != 1 or first_title != "引言":
+            add(
+                diagnostics,
+                "warning",
+                "invalid-opening-chapter",
+                relative,
+                first_line,
+                "first chapter should be `## 01. 引言`",
+            )
+
+    current_chapter: int | None = None
+    expected_subsection = 1
+    for level, line_number, title in body_headings:
+        if level == 2:
+            match = CHAPTER_RE.fullmatch(title)
+            current_chapter = int(match.group(1)) if match else None
+            expected_subsection = 1
+            continue
+        if level != 3:
+            continue
+        match = SUBSECTION_RE.fullmatch(title)
+        if not match or current_chapter is None:
+            add(
+                diagnostics,
+                "warning",
+                "invalid-subsection-heading",
+                relative,
+                line_number,
+                "H3 subsection should use `### N.M. 标题` under a numbered H2 chapter",
+            )
+            continue
+        parent_number = int(match.group(1))
+        subsection_number = int(match.group(2))
+        if parent_number != current_chapter or subsection_number != expected_subsection:
+            add(
+                diagnostics,
+                "warning",
+                "nonconsecutive-subsection-number",
+                relative,
+                line_number,
+                f"expected subsection {current_chapter}.{expected_subsection}, found {parent_number}.{subsection_number}",
+            )
+        expected_subsection = subsection_number + 1
+
+    if reference_heading is None:
+        return
+
+    reference_line = reference_heading[1]
+    if not h2_headings or h2_headings[-1][1] != reference_line:
+        add(
+            diagnostics,
+            "warning",
+            "references-not-final-section",
+            relative,
+            reference_line,
+            "`## 引用` should be the final H2 section",
+        )
+
+    reference_entries: list[tuple[int, str]] = []
+    for line_number in range(reference_line + 1, len(lines) + 1):
+        value = lines[line_number - 1].rstrip("\r\n")
+        if value.strip():
+            reference_entries.append((line_number, value))
+    if not reference_entries:
+        add(
+            diagnostics,
+            "warning",
+            "empty-references-section",
+            relative,
+            reference_line,
+            "`## 引用` should contain an ordered list of sources",
+        )
+        return
+
+    expected_reference = 1
+    for line_number, value in reference_entries:
+        match = REFERENCE_ENTRY_RE.fullmatch(value)
+        if not match:
+            add(
+                diagnostics,
+                "warning",
+                "invalid-reference-entry",
+                relative,
+                line_number,
+                "reference should be one line in the form `1.  条目`",
+            )
+            continue
+        reference_number = int(match.group(1))
+        content = match.group(2)
+        if reference_number != expected_reference:
+            add(
+                diagnostics,
+                "warning",
+                "nonconsecutive-reference-number",
+                relative,
+                line_number,
+                f"expected reference {expected_reference}, found {reference_number}",
+            )
+        expected_reference = reference_number + 1
+        if content.startswith("《") and not BOOK_REFERENCE_RE.fullmatch(content):
+            add(
+                diagnostics,
+                "warning",
+                "invalid-book-reference",
+                relative,
+                line_number,
+                "book reference should use `《书名》（作者 著，出版社）`",
+            )
+        if content.endswith(("。", ".", "；", ";")):
+            add(
+                diagnostics,
+                "warning",
+                "reference-terminal-punctuation",
+                relative,
+                line_number,
+                "reference entries should omit terminal punctuation",
+            )
+
+
 def audit_post(post: Path, root: Path) -> tuple[list[Diagnostic], set[str]]:
     relative = post.relative_to(root).as_posix()
     diagnostics: list[Diagnostic] = []
@@ -279,6 +499,7 @@ def audit_post(post: Path, root: Path) -> tuple[list[Diagnostic], set[str]]:
             add(diagnostics, "error", "invalid-draft", relative, fields["draft"][1], "draft must be an unquoted boolean")
 
     headings: dict[str, int] = {}
+    structural_headings: list[tuple[int, int, str]] = []
     previous_level = 0
     open_fence: tuple[str, int] | None = None
 
@@ -310,6 +531,7 @@ def audit_post(post: Path, root: Path) -> tuple[list[Diagnostic], set[str]]:
         heading = HEADING_RE.match(line)
         if heading:
             level = len(heading.group(1))
+            structural_headings.append((level, index, heading.group(2).strip()))
             name = normalize_heading(heading.group(2))
             if previous_level and level > previous_level + 1:
                 add(diagnostics, "warning", "heading-level-jump", relative, index, f"heading jumps from H{previous_level} to H{level}")
@@ -339,6 +561,9 @@ def audit_post(post: Path, root: Path) -> tuple[list[Diagnostic], set[str]]:
 
     if open_fence is not None:
         add(diagnostics, "error", "unclosed-code-fence", relative, open_fence[1], "fenced code block is not closed")
+
+    if frontmatter:
+        inspect_canonical_structure(lines, body_start, structural_headings, relative, diagnostics)
 
     image_field = fields.get("image")
     if image_field:
