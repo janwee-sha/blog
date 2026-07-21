@@ -1,7 +1,7 @@
 ---
 title: "使用 GitHub Actions、GHCR、Docker Compose 搭建 CI/CD 管道"
 published: 2026-07-21
-description: "以 Java Web 应用为例，使用 GitHub Actions 在 Pull Request 中执行测试，将 main 分支构建为 GHCR 镜像，并通过 SSH 和 Docker Compose 部署到 Linux 主机；健康检查失败时自动回滚。"
+description: "以 React + Vite 时钟应用为例，使用 GitHub Actions 在 Pull Request 中执行测试和构建，将 main 分支发布为 GHCR 镜像，并通过 SSH 和 Docker Compose 部署到 Linux 主机；健康检查失败时自动回滚。"
 image: ""
 tags: ["CI/CD 管道", "Docker", "GHCR", "GitHub Actions"]
 category: "DevOps"
@@ -13,14 +13,14 @@ lang: "zh_CN"
 
 持续集成（Continuous Integration，CI）的重点是尽早验证变更，持续交付或部署（Continuous Delivery/Deployment，CD）则负责把通过验证的产物送到目标环境。本文将使用 GitHub Actions、GitHub Container Registry（GHCR）和 Docker Compose 搭建一条完整管道：
 
-1. Pull Request 指向 `main` 时执行 Maven 测试。
-2. 代码合并到 `main` 后再次通过测试，再构建 Docker 镜像并推送到 GHCR。
+1. Pull Request 指向 `main` 时安装锁定依赖，执行单元测试和生产构建。
+2. 代码合并到 `main` 后再次通过验证，再构建 Docker 镜像并推送到 GHCR。
 3. GitHub Actions 通过 SSH 通知 Linux 主机部署新的镜像 digest。
 4. Docker Compose 等待容器通过健康检查；如果检查失败，部署脚本自动恢复上一个镜像。
 
 ```mermaid
 flowchart TB
-    PR[Pull Request] --> Test[GitHub Actions<br/>mvn verify]
+    PR[Pull Request] --> Test[GitHub Actions<br/>npm test<br/>npm run build]
     Merge[合并到 main] --> Test
     Test -->|PR| Result[返回检查结果]
     Test -->|main| Build[Buildx 构建镜像]
@@ -32,7 +32,7 @@ flowchart TB
     Health -->|失败| Rollback[恢复上一个 digest]
 ```
 
-本文继续使用 [simple-web-app](https://github.com/janwee-sha/simple-web-app) 作为示例。这是一个使用 Maven 构建的 Java Web 应用，本文使用 JDK 21 编译和运行它。构建产物为 `target/simple-web-app.jar`，访问根路径会返回服务器时间。
+本文使用 [simple-clock-app](https://github.com/janwee-sha/simple-clock-app) 作为示例。这是一个使用 React 19、TypeScript 和 Vite 8 构建的简单时钟应用，要求 Node.js 22.12.0 或更高版本。构建产物位于 `dist/`，访问根路径会显示根据浏览器本地时间实时转动的圆盘时钟。
 
 本文的目标环境是一台安装了 Docker Engine、Docker Compose V2 和 SSH 服务的 `linux/amd64` 主机。GitHub 托管的 Runner 必须能够访问该主机的 SSH 端口。本方案适合个人服务或中小型单机应用；更新容器时会有短暂中断，并不提供滚动发布或零停机能力。
 
@@ -41,72 +41,66 @@ flowchart TB
 克隆示例仓库：
 
 ```bash
-git clone https://github.com/janwee-sha/simple-web-app.git
-cd simple-web-app
+git clone https://github.com/janwee-sha/simple-clock-app.git
+cd simple-clock-app
 ```
 
-示例项目通过 `<finalName>simple-web-app</finalName>` 指定了 JAR 名称，但还需要在 `pom.xml` 的 `<build><plugins>` 中加入 Spring Boot Maven Plugin，才能生成包含启动器和运行时依赖的可执行 JAR：
-
-```xml
-<plugin>
-  <groupId>org.springframework.boot</groupId>
-  <artifactId>spring-boot-maven-plugin</artifactId>
-</plugin>
-```
-
-然后运行测试和打包：
+示例项目提交了 `package-lock.json`，CI 和镜像构建都使用 `npm ci` 按锁文件安装依赖。运行测试和生产构建：
 
 ```bash
-mvn -B -ntp verify
+npm ci
+npm test
+npm run build
 ```
 
-其中 `-B` 让 Maven 使用适合 CI 的非交互模式，`-ntp` 用于关闭依赖下载进度条。命令成功后，应生成可执行文件 `target/simple-web-app.jar`。示例仓库目前没有测试用例；实际项目应把单元测试和必要的集成测试纳入 `verify` 生命周期。
+`npm test` 使用 Vitest 和 jsdom 运行 `src/App.test.tsx` 中的 3 个测试，验证时钟表盘、日期时间和定时刷新行为。`npm run build` 先执行 TypeScript 类型检查，再让 Vite 生成 `dist/`。实际项目还应根据功能复杂度补充端到端测试和浏览器兼容性验证。
 
 ## 3. 构建应用镜像
 
 在仓库根目录创建 `Dockerfile`：
 
 ```dockerfile title="Dockerfile"
-FROM eclipse-temurin:21-jre-jammy
-
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl \
-    && rm -rf /var/lib/apt/lists/* \
-    && groupadd --system app \
-    && useradd --system --gid app --home-dir /app --shell /usr/sbin/nologin app
+FROM node:22-alpine AS build
 
 WORKDIR /app
 
-COPY --chown=app:app target/simple-web-app.jar app.jar
+COPY package.json package-lock.json ./
+RUN npm ci
 
-USER app
+COPY . .
+RUN npm run build
 
-EXPOSE 8080
+FROM nginx:stable-alpine
 
-HEALTHCHECK --interval=10s --timeout=3s --start-period=30s --retries=3 \
-    CMD curl --fail --silent --show-error http://127.0.0.1:8080/ > /dev/null || exit 1
+COPY --from=build /app/dist /usr/share/nginx/html
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
+EXPOSE 80
+
+HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=3 \
+    CMD wget -q -O /dev/null http://127.0.0.1/ || exit 1
 ```
 
-运行阶段只包含 JRE、应用 JAR 和健康检查所需的 `curl`。容器以非 root 用户运行，Docker 会定期访问应用根路径并维护 `healthy` 或 `unhealthy` 状态；部署脚本将以这个状态判断新版本能否接管服务。
+第一阶段安装锁定依赖并生成 Vite 生产构建；运行阶段只包含 Nginx 和 `dist/` 中的静态文件，不包含源码、Node.js 或 npm。Docker 会定期访问应用根路径并维护 `healthy` 或 `unhealthy` 状态；部署脚本将以这个状态判断新版本能否接管服务。
 
-再创建 `.dockerignore`，避免把源码、Git 历史和无关构建产物发送给 BuildKit：
+再创建 `.dockerignore`，避免把本地依赖、Git 历史和已有构建产物发送给 BuildKit：
 
 ```text title=".dockerignore"
 .git
 .github
-src
-target/*
-!target/simple-web-app.jar
+node_modules
+dist
+coverage
+*.log
 ```
 
 本地验证镜像：
 
 ```bash
-mvn -B -ntp package
-docker build --tag simple-web-app:local .
-docker run --rm --name simple-web-app-local -p 7100:8080 simple-web-app:local
+npm ci
+npm test
+npm run build
+docker build --tag simple-clock-app:local .
+docker run --rm --name simple-clock-app-local -p 7100:80 simple-clock-app:local
 ```
 
 另开一个终端访问 `http://127.0.0.1:7100`。确认应用正常后，按 `Ctrl+C` 停止容器。
@@ -118,7 +112,7 @@ docker run --rm --name simple-web-app-local -p 7100:8080 simple-web-app:local
 ```bash
 sudo useradd --create-home --shell /bin/bash deploy
 sudo usermod -aG docker deploy
-sudo install -d -o deploy -g deploy -m 0750 /opt/simple-web-app
+sudo install -d -o deploy -g deploy -m 0750 /opt/simple-clock-app
 ```
 
 `deploy` 用户需要重新登录后才能获得新的用户组权限。执行以下命令确认环境：
@@ -167,17 +161,17 @@ GHCR 的个人访问令牌需要自行轮换。`docker login` 默认可能把凭
 
 ## 5. 编写 Docker Compose 配置
 
-以 `deploy` 用户登录服务器，在 `/opt/simple-web-app` 中创建 `compose.yaml`：
+以 `deploy` 用户登录服务器，在 `/opt/simple-clock-app` 中创建 `compose.yaml`：
 
-```yaml title="/opt/simple-web-app/compose.yaml"
-name: simple-web-app
+```yaml title="/opt/simple-clock-app/compose.yaml"
+name: simple-clock-app
 
 services:
   app:
     image: ${IMAGE_REF:?IMAGE_REF must be set}
     restart: unless-stopped
     ports:
-      - "127.0.0.1:7100:8080"
+      - "127.0.0.1:7100:80"
 ```
 
 `IMAGE_REF` 不直接写死在 Compose 文件中，而是由部署脚本写入同目录的 `.env`。端口只绑定到主机回环地址，适合由 Nginx、Caddy 或其他反向代理提供 HTTPS；在部署主机上可以通过 `http://127.0.0.1:7100` 验证服务。
@@ -186,14 +180,14 @@ Compose 会继承镜像中的 `HEALTHCHECK`。执行 `docker compose up --wait` 
 
 ## 6. 编写部署与回滚脚本
 
-在 `/opt/simple-web-app` 中创建 `deploy.sh`：
+在 `/opt/simple-clock-app` 中创建 `deploy.sh`：
 
-```bash title="/opt/simple-web-app/deploy.sh"
+```bash title="/opt/simple-clock-app/deploy.sh"
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-readonly APP_DIR="/opt/simple-web-app"
-readonly IMAGE_PREFIX="ghcr.io/janwee-sha/simple-web-app"
+readonly APP_DIR="/opt/simple-clock-app"
+readonly IMAGE_PREFIX="ghcr.io/janwee-sha/simple-clock-app"
 
 new_ref="${1:-}"
 
@@ -281,7 +275,7 @@ exit 1
 为脚本添加执行权限：
 
 ```bash
-chmod 750 /opt/simple-web-app/deploy.sh
+chmod 750 /opt/simple-clock-app/deploy.sh
 ```
 
 脚本只接受固定 GHCR 仓库下的 SHA-256 digest，避免把任意字符串拼接到远程命令中。`.env` 通过临时文件和 `mv` 原子替换；`flock` 则避免手动部署与自动部署同时修改状态。
@@ -325,11 +319,11 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: janwee-sha/simple-web-app
+  IMAGE_NAME: janwee-sha/simple-clock-app
 
 jobs:
   test:
-    name: Test
+    name: Test and build
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -337,15 +331,20 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v6
 
-      - name: Set up Java
-        uses: actions/setup-java@v5
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
         with:
-          distribution: temurin
-          java-version: "21"
-          cache: maven
+          node-version: "22"
+          cache: npm
 
-      - name: Verify with Maven
-        run: mvn -B -ntp verify
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm test
+
+      - name: Build production bundle
+        run: npm run build
 
   publish:
     name: Publish image
@@ -360,16 +359,6 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
-
-      - name: Set up Java
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "21"
-          cache: maven
-
-      - name: Package application
-        run: mvn -B -ntp package -DskipTests
 
       - name: Log in to GHCR
         uses: docker/login-action@v4
@@ -425,7 +414,7 @@ jobs:
           DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
           DEPLOY_PORT: ${{ vars.DEPLOY_PORT }}
           DEPLOY_USER: ${{ vars.DEPLOY_USER }}
-          IMAGE: ghcr.io/janwee-sha/simple-web-app
+          IMAGE: ghcr.io/janwee-sha/simple-clock-app
           DIGEST: ${{ needs.publish.outputs.digest }}
         run: |
           DEPLOY_PORT="${DEPLOY_PORT:-22}"
@@ -439,23 +428,23 @@ jobs:
             -p "$DEPLOY_PORT" \
             -i "$HOME/.ssh/id_ed25519" \
             "$DEPLOY_USER@$DEPLOY_HOST" \
-            "/opt/simple-web-app/deploy.sh '$IMAGE@$DIGEST'"
+            "/opt/simple-clock-app/deploy.sh '$IMAGE@$DIGEST'"
 ```
 
-`test` Job 同时服务于 Pull Request 和 `main` 分支。`publish` 只在 `push` 事件中运行，因此 Pull Request 不会获得 `packages: write` 权限，也接触不到生产凭据。发布 Job 使用短期 `GITHUB_TOKEN` 登录 GHCR，无需创建额外的写入令牌。
+`test` Job 同时服务于 Pull Request 和 `main` 分支，按锁文件安装依赖后执行单元测试和生产构建。`publish` 只在 `push` 事件中运行，因此 Pull Request 不会获得 `packages: write` 权限，也接触不到生产凭据。发布 Job 使用短期 `GITHUB_TOKEN` 登录 GHCR，无需创建额外的写入令牌；应用构建由 Dockerfile 的第一阶段完成，最终镜像只包含 Nginx 和静态文件。
 
-镜像同时带有完整 Git commit SHA 标签和便于查看的 `main` 标签。标签可以移动，因此部署 Job 没有使用标签，而是读取 `build-push-action` 返回的 digest，并让生产主机拉取 `ghcr.io/janwee-sha/simple-web-app@sha256:...`。这样即使某个标签后来被覆盖，已经记录的部署版本仍然指向相同镜像内容。
+镜像同时带有完整 Git commit SHA 标签和便于查看的 `main` 标签。标签可以移动，因此部署 Job 没有使用标签，而是读取 `build-push-action` 返回的 digest，并让生产主机拉取 `ghcr.io/janwee-sha/simple-clock-app@sha256:...`。这样即使某个标签后来被覆盖，已经记录的部署版本仍然指向相同镜像内容。
 
 示例使用撰写本文时各 Action 的当前主版本标签，以便阅读。GitHub 建议在安全要求较高的生产仓库中将外部 Action 固定到完整 commit SHA，并使用 Dependabot 持续更新；完整 SHA 不会像可移动标签一样在不知情的情况下指向其他代码。
 
 ## 9. 首次部署与验证
 
-把 `pom.xml`、`Dockerfile`、`.dockerignore` 和 `.github/workflows/pipeline.yml` 提交到特性分支并创建 Pull Request。`Test` Job 成功后合并到 `main`，工作流将继续发布镜像并进入 `production` 部署。
+把 `Dockerfile`、`.dockerignore` 和 `.github/workflows/pipeline.yml` 提交到特性分支并创建 Pull Request。`Test and build` Job 成功后合并到 `main`，工作流将继续发布镜像并进入 `production` 部署。
 
 在部署主机查看状态：
 
 ```bash
-cd /opt/simple-web-app
+cd /opt/simple-clock-app
 docker compose ps
 docker compose images
 curl --fail --show-error http://127.0.0.1:7100/
@@ -472,7 +461,7 @@ cat .env
 
 ```dockerfile
 HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=2 \
-    CMD curl --fail --silent --show-error http://127.0.0.1:65535/ > /dev/null || exit 1
+    CMD wget -q -O /dev/null http://127.0.0.1:65535/ || exit 1
 ```
 
 合并后，新容器会变为 `unhealthy`，`docker compose up --wait` 返回失败。部署脚本随后恢复 `.env` 中原来的 digest、重新创建旧容器，并以退出码 `1` 结束。最终应同时看到以下结果：
@@ -486,8 +475,8 @@ HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=2 \
 如果需要手动恢复某个已知 digest，可以在部署主机执行：
 
 ```bash
-/opt/simple-web-app/deploy.sh \
-  'ghcr.io/janwee-sha/simple-web-app@sha256:<64-character-digest>'
+/opt/simple-clock-app/deploy.sh \
+  'ghcr.io/janwee-sha/simple-clock-app@sha256:<64-character-digest>'
 ```
 
 脚本仍会执行拉取、健康检查和失败回滚，不应直接编辑 `.env` 后跳过验证。
@@ -500,7 +489,7 @@ HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=2 \
 2. 把 SSH 私钥放在受保护的 `production` Environment，而不是写入仓库或普通配置文件。
 3. 验证 SSH 主机指纹，不使用 `StrictHostKeyChecking=no`。
 4. 私有镜像的服务器令牌只授予 `read:packages`，定期轮换，并在人员变动或疑似泄露后立即吊销。
-5. 定期更新 Action、基础镜像、JDK 和 Docker Engine；生产工作流可将 Action 固定到完整 commit SHA。
+5. 定期更新 Action、基础镜像、Node.js、Nginx 和 Docker Engine；生产工作流可将 Action 固定到完整 commit SHA。
 6. 示例默认构建 `linux/amd64` 镜像；部署到 ARM64 主机时，需要配置 QEMU 并让 Buildx 同时构建 `linux/arm64`。
 7. 这是单主机原地替换方案。需要零停机、多副本调度、渐进式发布或跨主机容灾时，应改用反向代理双实例、Docker Swarm、Kubernetes 或云平台托管的容器服务。
 
@@ -517,4 +506,6 @@ HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=2 \
 7. Docker Build 的 GitHub Actions 集成：[https://docs.docker.com/build/ci/github-actions/](https://docs.docker.com/build/ci/github-actions/)
 8. Docker Compose 变量插值：[https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/](https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/)
 9. `docker compose up` 命令：[https://docs.docker.com/reference/cli/docker/compose/up/](https://docs.docker.com/reference/cli/docker/compose/up/)
-10. simple-web-app 示例项目：[https://github.com/janwee-sha/simple-web-app](https://github.com/janwee-sha/simple-web-app)
+10. simple-clock-app 示例项目：[https://github.com/janwee-sha/simple-clock-app](https://github.com/janwee-sha/simple-clock-app)
+11. setup-node Action：[https://github.com/actions/setup-node](https://github.com/actions/setup-node)
+12. Nginx Docker 官方镜像：[https://hub.docker.com/_/nginx](https://hub.docker.com/_/nginx)
