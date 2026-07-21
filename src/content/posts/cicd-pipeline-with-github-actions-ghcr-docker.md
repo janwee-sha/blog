@@ -19,7 +19,7 @@ lang: "zh_CN"
 4. Docker Compose 等待容器通过健康检查；如果检查失败，部署脚本自动恢复上一个镜像。
 
 ```mermaid
-flowchart LR
+flowchart TB
     PR[Pull Request] --> Test[GitHub Actions<br/>mvn verify]
     Merge[合并到 main] --> Test
     Test -->|PR| Result[返回检查结果]
