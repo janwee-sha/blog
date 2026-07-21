@@ -1,65 +1,51 @@
 ---
-title: "LangExtract初探"
+title: "LangExtract 初探"
 published: 2026-02-25
-updated: 2026-05-05
-description: "最近关注到 Google 开源的 LangExtract 。从定位上看，它并不是一个通用聊天框架，而是一个面向信息抽取场景的工具：通过大语言模型，按照开发者定义的抽取规则，将非结构化文本转换为结构化结果。 如果你曾经接触过传统的 NER、关键词抽取或关系抽取，会比较容易理解 LangExtract 的价值。它的重点并不在于完成“识别人名、地名、组织名”这类固"
+updated: 2026-07-21
+description: "试用 Google 开源的 LangExtract：用自然语言和 few-shot 示例定义抽取规则，分别接入 Ollama 与 OpenAI 模型，把《西游记》片段转换为结构化数据，并记录实际效果和不足。"
 image: ""
-tags: ["AI", "Lang Extract"]
+tags: ["AI", "LangExtract"]
 category: "AI"
 draft: false
 lang: "zh_CN"
 ---
 > 操千曲而后晓声，观千剑而后识器
 >
-> — ——《文心雕龙·知音》
+> ——《文心雕龙·知音》
 
-最近关注到 Google 开源的 **LangExtract**。从定位上看，它并不是一个通用聊天框架，而是一个面向信息抽取场景的工具：通过大语言模型，按照开发者定义的抽取规则，将非结构化文本转换为结构化结果。
+第一次看到 Google 开源的 **LangExtract** 时，我以为它又是一个套在大模型外面的通用框架。实际跑过几个例子后，发现它的定位要窄得多：**从非结构化文本中找出指定内容，并整理成可供程序继续处理的结构化数据。**
 
-如果你曾经接触过传统的 NER、关键词抽取或关系抽取，会比较容易理解 LangExtract 的价值。它的重点并不在于完成“识别人名、地名、组织名”这类固定任务，而在于允许开发者直接使用自然语言描述业务化的抽取目标。例如：
+传统 NER 常见的目标是识别人名、地名、组织名。LangExtract 不预设这套标签，而是让开发者用自然语言和示例描述自己关心的内容。比如分析一段小说时，我可以让它找出：
 
--   抽取人物；
--   抽取人物别名或称谓；
--   抽取人物行为；
--   为行为补充执行者、目标等上下文属性。
+-   出场人物；
+-   人物的别名或称谓；
+-   文中明确写出的行为；
+-   行为的发起者和承受者。
 
-因此，LangExtract 更像是一个**面向业务场景的可编排信息抽取层**。它将抽取任务从传统的规则工程、模型训练或标签体系设计中抽离出来，转化为“定义抽取目标、提供示例、调用模型”的流程。
+过去碰到这类需求，往往要写一堆正则和规则，或者准备标注数据训练专用模型。LangExtract 提供了另一条路：先写清楚抽取目标，再给模型看一两个输入、输出示例，然后直接调用大模型。它没有消除信息抽取本身的难度，但确实降低了验证想法的门槛。
 
-## 01.LangExtract能解决什么问题
+## 01.LangExtract 在做什么
 
-LangExtract 适合处理以下类型的任务：
+如果只是让模型返回一段 JSON，直接调用模型 API 也能做到。LangExtract 真正有用的地方，在于它把抽取任务中几件麻烦事放到了一起：用 few-shot 示例约束输出结构、将结果对应回原文位置、处理长文档，以及生成便于核对结果的可视化页面。对于需要人工复核的抽取任务，“这条结果来自原文哪里”往往和结果本身同样重要。
 
--   从长文本中抽取指定类型的信息；
--   按照业务语义定义实体类型，而不是受限于通用标签体系；
--   为抽取结果附加属性，以补充必要的上下文信息；
--   通过 few-shot 示例约束模型输出，使抽取结果更加稳定；
--   将非结构化文本整理为便于后续处理的结构化数据。
+这次我拿《西游记》中的一小段文字做测试，只定义两类结果：
 
-概括来说，LangExtract 的核心目标不是“让模型回答问题”，而是“让模型按照指定格式完成抽取”。
+-   `character`：人物，别名或称谓放在 `alias` 属性中；
+-   `action`：行为，执行者和承受者分别放在 `actor`、`target` 属性中。
 
-本文将以《西游记》片段作为示例，希望从文本中抽取以下信息：
+我还给抽取过程加了几条限制：结果必须照抄原文，顺序不能打乱，也不能擅自合并或概括。后面可以看到，即使要求写得很明确，模型也未必会完全照办。
 
--   人物：`character`
--   别名或称谓：`alias`
--   行为：`action`
+## 02.安装 LangExtract
 
-同时，要求抽取过程遵循以下约束：
-
--   抽取内容应尽量使用原文表述；
--   保持文本中的出现顺序；
--   不随意改写、合并或泛化实体；
--   可以补充上下文属性，例如行为的执行者、目标对象等。
-
-## 02.安装依赖
-
-LangExtract 是一个 Python 库，因此可以通过 Python 的包管理工具 `pip` 安装。建议先为项目创建独立的 Python 虚拟环境，以避免与系统环境或其他项目依赖发生冲突。
+LangExtract 是一个 Python 库，可以直接用 `pip` 安装。我习惯先建一个虚拟环境，免得把依赖混进系统环境：
 
 ```bash
 python -m venv langextract_env
 ```
 
-Linux / macOS 环境下执行：
+Linux 或 macOS 下执行：
 
-```java
+```bash
 source langextract_env/bin/activate
 pip install langextract
 ```
@@ -71,27 +57,31 @@ langextract_env\Scripts\activate
 pip install langextract
 ```
 
-虚拟环境创建完成后，后续安装的依赖都会隔离在当前项目目录中，便于管理和清理。
+如果后面要试 OpenAI 模型，还需要安装对应的可选依赖：
+
+```bash
+pip install "langextract[openai]"
+```
 
 ## 03.使用本地 Ollama 模型
 
-LangExtract 可以接入多种大语言模型。如果希望在本地运行，避免依赖云端 API，可以结合 Ollama 使用。
+我先用 Ollama 跑本地模型。这样不用申请 API Key，也方便反复修改提示词；代价是抽取质量更依赖模型本身，运行速度也受本机配置影响。
 
 ### 3.1.安装并准备模型
 
-从[Ollama官网](https://ollama.com/)下载并安装 Ollama。然后验证安装结果：
+从 [Ollama 官网](https://ollama.com/)下载安装后，先确认命令能够正常执行：
 
 ```bash
 ollama --version
 ```
 
-随后下载一个本地模型。这里以 `qwen3` 为例：
+这里用 `qwen3` 做测试：
 
 ```bash
 ollama pull qwen3
 ```
 
-模型下载完成后，可以先运行一次，确认模型能够正常启动：
+下载完成后运行一次，确认 Ollama 服务和模型都没有问题：
 
 ```bash
 ollama run qwen3
@@ -310,19 +300,11 @@ prompt = textwrap.dedent("""
 """)
 ```
 
-对于信息抽取任务而言，prompt 的重点不在于语言是否华丽，而在于约束是否明确。至少需要说明以下内容：
+写这种 prompt 不需要追求复杂，关键是把容易产生分歧的地方提前说清楚：抽取哪些类别、实体边界怎么算、是否允许改写，以及属性分别代表什么。如果 `actor` 和 `target` 的含义含糊，模型即使返回了格式正确的 JSON，也可能把两者填反。
 
--   需要抽取哪些类型的信息；
--   是否需要保持原文顺序；
--   抽取结果是否允许改写；
--   是否允许补充属性；
--   属性应该表达何种上下文关系。
+### 5.2.用 examples 示范抽取口径
 
-在结构化抽取场景中，清晰的规则通常比复杂的描述更重要。
-
-### 5.2.用 examples 做 few-shot 对齐
-
-接着，脚本通过 `examples` 提供了一个示例：
+光靠文字解释仍然可能有歧义，所以还要给出一组输入和期望输出：
 
 ```python
 examples = [
@@ -344,19 +326,13 @@ examples = [
 ]
 ```
 
-这一部分非常关键。它相当于向模型展示了一组“输入文本与期望输出”的对应关系，明确告诉模型：
+这段示例同时演示了类别名称、原文边界和属性放置方式。模型由此知道，“行者”是要保留的原文，而“齐天大圣”和“孙悟空”应该作为它的别名。
 
--   输入文本可能是什么样的；
--   哪些内容需要被抽取；
--   抽取结果应该使用什么类别；
--   属性应当如何挂载；
--   哪些信息可以忽略。
-
-在实际项目中，高质量的 few-shot 示例往往比继续堆叠 prompt 约束更有效。尤其是在实体边界、属性归属和抽取粒度较为复杂的场景中，示例可以显著提升输出稳定性。
+如果抽取规则比较复杂，与其不断给 prompt 增加补丁，不如多准备几组有代表性的示例。尤其是容易混淆的边界情况，最好直接在示例中告诉模型该怎样处理。当然，示例之间也要保持一致，否则模型只会学到互相矛盾的规则。
 
 ### 5.3.用 lx.extract() 执行抽取
 
-两个脚本最终都会调用 `lx.extract()`：
+准备好规则和示例后，调用 `lx.extract()`：
 
 ```python
 result = lx.extract(
@@ -366,29 +342,42 @@ result = lx.extract(
     ...)
 ```
 
-其中几个核心参数如下：
+入门时主要会用到四个参数：
 
 -   `text_or_documents`：待处理文本或文档；
 -   `prompt_description`：抽取规则说明；
 -   `examples`：few-shot 示例；
 -   `model_id`：底层模型名称。
 
-如果使用本地 Ollama 模型，可以直接指定：
+使用 Ollama 时，再告诉 LangExtract 本地服务的地址：
 
 ```python
-model_id="qwen3"
+model_id="qwen3",
+model_url="http://localhost:11434",
 ```
 
-如果使用 OpenAI 模型，则需要额外指定：
+切换到 OpenAI 时，保留同一套 `prompt_description` 和 `examples`，更换 `model_id` 即可。不同模型在速度、费用和抽取质量上各有差异，最终选哪个，还是要拿自己的数据测试。
+
+### 5.4.核对结果是否来自原文
+
+LangExtract 会尝试把每条抽取结果映射回原文位置，这个信息保存在 `char_interval` 中：
 
 ```python
-language_model_type=OpenAILanguageModel,
-api_key=os.environ["OPENAI_API_KEY"],
-fence_output=True,
-use_schema_constraints=False,
+for extraction in result.extractions:
+    print(extraction.extraction_text, extraction.char_interval)
 ```
 
-这使得 LangExtract 在使用方式上具备较好的可切换性：同一套抽取规则和示例，可以尝试接入不同的模型提供方，并根据成本、性能和稳定性选择合适的部署方案。
+如果模型给出的内容在原文中根本找不到，`char_interval` 会是 `None`。前面 qwen3 返回的“被打”就值得用这个办法检查。只保留能够回溯到原文的结果，可以先过滤一次：
+
+```python
+grounded_extractions = [
+    extraction
+    for extraction in result.extractions
+    if extraction.char_interval is not None
+]
+```
+
+不过，这只能挡住“原文里不存在”的内容，挡不住角色标反、漏抽等语义错误。最终仍然要靠评测数据和人工抽查兜底。
 
 ## 06.总结
 
