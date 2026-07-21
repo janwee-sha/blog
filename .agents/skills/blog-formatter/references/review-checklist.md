@@ -53,7 +53,12 @@ Treat the following structure, extracted from `src/content/posts/domain-driven-d
 - Read `src/content/config.ts` and validate fields against the current posts collection schema.
 - Reconcile the schema with `README.md`, the post generator, and validation scripts. A field can be schema-optional yet required by repository publication policy.
 - Check YAML types, duplicate keys, quoting, ISO dates, booleans, arrays, and unknown keys. Keep `published` and `updated` chronologically plausible; do not change dates without evidence.
-- Check the slug implied by the path, `draft` state, language tag, category, tags, description, and cover image for internal consistency.
+- Derive the slug from the selected post's path as documented by `README.md`: for `src/content/posts/<slug>.md`, inspect the `<slug>` filename stem.
+- Require lowercase ASCII kebab-case for the slug. Preserve official spellings and conventional forms of product names, acronyms, and technical terms when converting them to URL-safe words.
+- Compare the English slug with the frontmatter title, description, and article's central topic. Check English grammar, word choice, singular/plural forms, parts of speech, prepositions, and natural word order.
+- Prefer a concise, idiomatic English rendering that preserves the distinguishing meaning of the Chinese title. Do not require word-for-word translation, but flag mistranslations, awkward machine translation, ambiguity, omitted core concepts, and unsupported specificity.
+- Treat every proposed slug correction as needing user review because the filename determines the published route. Present the current and proposed slug with the reason and URL/link impact; never rename it as a definite repair.
+- Check `draft` state, language tag, category, tags, description, and cover image for internal consistency.
 - Keep the description useful, grammatical, non-truncated, and representative of the article. Avoid copying navigation text or an arbitrary slice of the body.
 - Preserve supported repository extensions: math, directives, GitHub-style admonitions, custom components, and Expressive Code annotations.
 - Run Astro/content/build checks rather than assuming parse validity from visual inspection.

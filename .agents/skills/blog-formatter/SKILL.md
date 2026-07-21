@@ -1,6 +1,6 @@
 ---
 name: blog-formatter
-description: Interactively review and fix one or all Markdown/MDX posts under src/content/posts in this Astro/Fuwari blog. Use when asked to format, proofread, lint, normalize, or validate blog posts; check Markdown and Astro frontmatter, Chinese/English spacing, typos and grammar, consistency, images and links, or publication readiness. Always inspect first, present proposed fixes and judgment-sensitive questions, wait for user feedback, then apply only the approved changes and validate them. Accept scope=all or a slug, filename, or repo-relative path.
+description: Interactively review and fix one or all Markdown/MDX posts under src/content/posts in this Astro/Fuwari blog. Use when asked to format, proofread, lint, normalize, or validate blog posts; check Markdown and Astro frontmatter, filename/slug English grammar and meaning, Chinese/English spacing, typos and grammar, consistency, images and links, or publication readiness. Always inspect first, present proposed fixes and judgment-sensitive questions, wait for user feedback, then apply only the approved changes and validate them. Accept scope=all or a slug, filename, or repo-relative path.
 ---
 
 # Blog Formatter
@@ -51,16 +51,16 @@ Require at least one confirmation before applying any proposed changes. Ask targ
    ```
 
    Treat the script as a deterministic preflight, not as a complete editorial review. Refuse paths outside `src/content/posts/`, missing posts, and ambiguous slugs.
-5. Read every selected post completely. Inspect the whole file when judging terminology, heading structure, numbering, punctuation, and consistency; do not infer consistency from an excerpt.
+5. Read every selected post completely. Inspect the whole file when judging terminology, heading structure, numbering, punctuation, consistency, and whether the filename slug is grammatical English that accurately conveys the title and central topic; do not infer meaning from an excerpt.
 6. Check every category in the required checklist, including the canonical epigraph, chapter, and reference-list structure extracted from `domain-driven-design.md`. Treat those structural conventions as repository publication rules, not optional examples. Validate local links and deduplicated external links during this phase. Do not edit while checking.
-7. Build a proposed repair set with exact file and line locations, the current text or condition, the recommended change, and the reason.
+7. Build a proposed repair set with exact file and line locations, the current text or condition, the recommended change, and the reason. For a slug finding, cite the current file path and the frontmatter title line.
 
 ## Phase 2: Review with the user
 
 Classify findings before asking for feedback:
 
 - **Definite repairs**: clear, meaning-preserving defects such as malformed Markdown, missing resources, obvious typos, accidental NBSP characters, or unambiguous Chinese/English spacing. Group repetitive instances and ask for one approval for the group.
-- **Needs user review**: wording or tone changes, multiple valid corrections, title/description/frontmatter changes, heading-anchor changes, a missing or inaccurate opening epigraph, missing bibliographic metadata, fact or API updates, runnable-code changes, link replacements, publication dates, or anything that could alter meaning. Show the recommended option and concise alternatives or tradeoffs.
+- **Needs user review**: wording or tone changes, multiple valid corrections, title/description/frontmatter changes, filename or slug changes, heading-anchor changes, a missing or inaccurate opening epigraph, missing bibliographic metadata, fact or API updates, runnable-code changes, link replacements, publication dates, or anything that could alter meaning. Show the recommended option and concise alternatives or tradeoffs.
 - **Suggestions only**: subjective improvements that are not errors. Keep them out of the repair set by default; offer them separately without assuming approval.
 
 Present a compact repair plan before any edits. Include enough before/after text for the user to judge the change. Ask no more than three focused questions at a time; group repeated decisions by rule rather than asking per occurrence. Use an interactive input tool when available, otherwise ask concise plain-text questions.
@@ -110,6 +110,7 @@ Never propose replacing or removing an external link solely because an automated
 - Add Chinese/English boundary spaces in prose, but preserve established product names and syntax. Use punctuation appropriate to the surrounding language.
 - Preserve intentional hard line breaks, tables, math, directives, admonitions, raw HTML, and Expressive Code metadata.
 - Do not invent a classical quotation, its source, or bibliographic metadata to satisfy the canonical structure. Ask the user to provide or approve meaning-sensitive content, and verify attribution before inserting it.
+- Treat every slug rename as a public URL change. Never rename a post automatically; show the current and proposed slug, explain the grammatical or semantic issue, note link and SEO impact, and wait for explicit approval. After an approved rename, update affected internal links and repository-supported redirects within the approved scope, then validate the generated route.
 - Do not change publication dates, facts, API names, version numbers, or runnable examples without explicit item-level approval.
 - Do not update `updated` automatically unless the user approves it or the repository convention requires it.
 - Do not touch unselected posts to create global consistency. Report cross-scope inconsistencies instead.
