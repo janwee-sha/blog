@@ -5,7 +5,7 @@
 /quicksort/ /posts/quicksort/ 301
 /heap/ /posts/heap/ 301
 /caching-strategies/ /posts/caching-strategies/ 301
-/concurrent-container-classes-in-java/ /posts/concurrent-container-classes-in-java/ 301
+/concurrent-collections-in-java/ /posts/concurrent-collections-in-java/ 301
 /scheduling-messages-with-rabbitmq/ /posts/scheduling-messages-with-rabbitmq/ 301
 /thread-safe-implementations-of-java-singleton-design-pattern/ /posts/thread-safe-implementations-of-java-singleton-design-pattern/ 301
 /mysql-window-function/ /posts/mysql-window-function/ 301
