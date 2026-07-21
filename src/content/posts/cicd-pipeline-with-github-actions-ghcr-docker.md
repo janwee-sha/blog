@@ -53,7 +53,7 @@ npm test
 npm run build
 ```
 
-`npm ci` 是 npm 为 CI/CD 环境设计的“干净安装”命令，其中 `ci` 表示 Clean Install。 它会：
+`npm ci` 是 npm 为 CI/CD 环境设计的“干净安装”命令，其中 `ci` 表示 Clean Install。它会：
 
 - 严格按照 `package-lock.json` 安装固定版本的依赖
 - 安装前删除已有的 `node_modules`
@@ -105,19 +105,19 @@ f. `RUN npm run build` 执行项目的生产构建命令：
 
 g. `FROM nginx:stable-alpine` 开始一个全新的运行阶段，使用官方 NGINX Alpine 镜像。新阶段不会自动包含前一阶段的 Node.js、npm、源码或依赖，因此最终镜像更小，攻击面也更少。
 
-h. `COPY --from=build /app/dist /usr/share/nginx/html` 只把 `build` 阶段生成的静态文件复制到 NGINX 默认网站目录。 容器启动后，NGINX 会直接提供其中的 `index.html`、JavaScript 和 CSS 文件。
+h. `COPY --from=build /app/dist /usr/share/nginx/html` 只把 `build` 阶段生成的静态文件复制到 NGINX 默认网站目录。容器启动后，NGINX 会直接提供其中的 `index.html`、JavaScript 和 CSS 文件。
 
-i. `EXPOSE 80` 声明应用在容器内使用 HTTP 端口 `80`。 它只是镜像元数据，不会自动把端口开放到宿主机。运行时仍需映射端口。
+i. `EXPOSE 80` 声明应用在容器内使用 HTTP 端口 `80`。它只是镜像元数据，不会自动把端口开放到宿主机。运行时仍需映射端口。
 
 j. `HEALTHCHECK` 指令定义容器健康检查：
 
-    - `--interval=10s`：每 10 秒检查一次。
-    - `--timeout=3s`：单次检查最多等待 3 秒。
-    - `--start-period=10s`：启动后的前 10 秒为宽限期。
-    - `--retries=3`：连续失败 3 次后标记为 unhealthy。
-    - `wget -q`：安静地请求 NGINX 根路径。
-    - `-O /dev/null`：丢弃响应内容。
-    - `|| exit 1`：请求失败时返回非零退出码。
+- `--interval=10s`：每 10 秒检查一次。
+- `--timeout=3s`：单次检查最多等待 3 秒。
+- `--start-period=10s`：启动后的前 10 秒为宽限期。
+- `--retries=3`：连续失败 3 次后标记为 unhealthy。
+- `wget -q`：安静地请求 NGINX 根路径。
+- `-O /dev/null`：丢弃响应内容。
+- `|| exit 1`：请求失败时返回非零退出码。
 
 Docker 会定期访问应用根路径并维护 `healthy` 或 `unhealthy` 状态；部署脚本将以这个状态判断新版本能否接管服务。
 

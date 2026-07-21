@@ -1,8 +1,8 @@
 ---
-title: "MySQL窗口函数"
+title: "MySQL 窗口函数"
 published: 2024-01-09
 updated: 2026-03-17
-description: "窗口函数（Window Function）是MySQL 8.0才加入的一项重要功能，之前需要很复杂的操作才能实现的分析、汇总等等查询通过窗口函数终于可以很简单地实现了。窗口函数在一组查询行上执行类似于聚合的操作。大多数聚合函数也可以用作窗口函数。不过，有别于聚合操作将查询行分组为单个结果行，窗口函数为每个查询行生成一个结果： 执行函数分析的行被称为当前行。 "
+description: "窗口函数（Window Function）是 MySQL 8.0 才加入的一项重要功能，之前需要很复杂的操作才能实现的分析、汇总等等查询通过窗口函数终于可以很简单地实现了。窗口函数在一组查询行上执行类似于聚合的操作。大多数聚合函数也可以用作窗口函数。不过，有别于聚合操作将查询行分组为单个结果行，窗口函数为每个查询行生成一个结果： 执行函数分析的行被称为当前行。 "
 image: ""
 tags: ["MySQL", "MySQL 窗口函数"]
 category: "MySQL"
@@ -11,9 +11,9 @@ lang: "zh_CN"
 ---
 > 物有本末，事有终始。知所先后，则近道矣
 >
-> — ——《礼记·大学》
+> ——《礼记·大学》
 
-窗口函数（Window Function）是MySQL 8.0才加入的一项重要功能，之前需要很复杂的操作才能实现的分析、汇总等等查询通过窗口函数终于可以很简单地实现了。窗口函数在一组查询行上执行类似于聚合的操作。大多数聚合函数也可以用作窗口函数。不过，有别于聚合操作将查询行分组为单个结果行，窗口函数为每个查询行生成一个结果：
+窗口函数（Window Function）是 MySQL 8.0 才加入的一项重要功能，之前需要很复杂的操作才能实现的分析、汇总等等查询通过窗口函数终于可以很简单地实现了。窗口函数在一组查询行上执行类似于聚合的操作。大多数聚合函数也可以用作窗口函数。不过，有别于聚合操作将查询行分组为单个结果行，窗口函数为每个查询行生成一个结果：
 
 -   执行函数分析的行被称为当前行。
 -   与当前行相关的查询行构成当前行的窗口。
@@ -30,13 +30,13 @@ window_function_name(expression) OVER (
 )
 ```
 
-我们需要先指定窗口函数名称，然后是表达式。然后指定OVER子句，OVER子句可以包含分区定义、顺序定义和框架定义。不管有没有表达式，OVER 子句后都需要加上括号。
+我们需要先指定窗口函数名称，然后是表达式。然后指定 OVER 子句，OVER 子句可以包含分区定义、顺序定义和框架定义。不管有没有表达式，OVER 子句后都需要加上括号。
 
 ### 1.1. 窗口函数
 
 窗口函数一般可分为聚合窗口函数和分析窗口函数。
 
-聚合窗口函数包括 SUM、COUNT、AVG、MIN 和 MAX等，通常返回一个标量值。
+聚合窗口函数包括 SUM、COUNT、AVG、MIN 和 MAX 等，通常返回一个标量值。
 
 分析窗口函数又可分为排序函数和值函数，根据当前行建立记录窗口，然后使用该窗口计算结果。输出结果通常是一组记录。例如 RANK、DENSE\_RANK、ROW\_NUMBER、CUME\_DIST、LAG、LEAD 等。
 
@@ -56,17 +56,17 @@ window_function_name(expression) OVER (
 -   PERCENT\_RANK()
 -   RANK() ROW\_NUMBER()
 
-### 1.2. PARTITION BY子句
+### 1.2. PARTITION BY 子句
 
-PARTITION BY子句将行分割成块或分区。两个分区之间用分区边界隔开。窗口函数在分区内执行，并在跨越分区边界时重新初始化。语法如下：
+PARTITION BY 子句将行分割成块或分区。两个分区之间用分区边界隔开。窗口函数在分区内执行，并在跨越分区边界时重新初始化。语法如下：
 
 ```sql
 PARTITION BY <expression>[{,<expression>...}]
 ```
 
-### 1.3. ORDER BY子句
+### 1.3. ORDER BY 子句
 
-ORDER BY子句指定分区内记录的排序方式。可以根据多个键对分区内的数据进行排序，每个键由一个表达式指定。多个表达式之间也用逗号分隔。
+ORDER BY 子句指定分区内记录的排序方式。可以根据多个键对分区内的数据进行排序，每个键由一个表达式指定。多个表达式之间也用逗号分隔。
 
 与 PARTITION BY 子句类似，所有窗口函数也都支持 ORDER BY 子句。不过，只有对顺序敏感的窗口函数才有必要使用 ORDER BY 子句。
 
@@ -88,13 +88,13 @@ frame_unit {<frame_start>|<frame_between>}
 
 框架的边界使用 frame\_start 和 frame\_between 定义。
 
-frame\_start可以包含下面的值：
+frame\_start 可以包含下面的值：
 
 -   UNBOUNDED PRECEDING：框架从分区的第一行开始。
 -   N PRECEDING：当前行之前的实际 N 行。N 可以是一个字面数字，也可以是一个结果为数字的表达式。
 -   CURRENT ROW：当前计算的行。
 
-frame\_between像下面这样定义：
+frame\_between 像下面这样定义：
 
 ```sql
 BETWEEN frame_boundary_1 AND frame_boundary_2
@@ -108,7 +108,7 @@ frame\_boundary\_1 和 frame\_boundary\_2 可包含下面的值：
 
 ## 2\. 实践
 
-下面的例子都会使用一个记录学生考试分数test\_score表，表结构和示例数据如下：
+下面的例子都会使用一个记录学生考试分数 test\_score 表，表结构和示例数据如下：
 
 ```text
 +----+-----------+-------+------------+
@@ -121,7 +121,7 @@ frame\_boundary\_1 和 frame\_boundary\_2 可包含下面的值：
 +----+-----------+-------+------------+
 ```
 
-### 2.1. SUM和AVG
+### 2.1. SUM 和 AVG
 
 下面的查询演示了怎样使用移动框架行计算每个用户按时间排序的当前总分数，以及根据最近得分的滚动平均值：
 
@@ -152,7 +152,7 @@ FROM `test_score`;
 +------------+-------------+-------+---------------+----------------+
 ```
 
-### 2.2. RANK和DENSE\_RANK
+### 2.2. RANK 和 DENSE\_RANK
 
 列出每次考试的分数排名情况（相同分数时排名相同）：
 
@@ -216,4 +216,4 @@ FROM
 
 ## 引用
 
-1.  MySQL窗口函数 @ [https://dev.mysql.com/doc/refman/8.3/en/window-functions.html](https://dev.mysql.com/doc/refman/8.3/en/window-functions.html)
+1.  MySQL 窗口函数 @ [https://dev.mysql.com/doc/refman/8.3/en/window-functions.html](https://dev.mysql.com/doc/refman/8.3/en/window-functions.html)

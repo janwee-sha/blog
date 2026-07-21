@@ -55,7 +55,7 @@ private void waitFor(long milli) {
 }
 ```
 
-在上面的测试中，我们创建了一个核心线程数及最大线程数都是 1 的线程池，并指定工作队列为同步式阻塞队列 SynchronousQueue（SynchronousQueue 队列的每一个插入操作都会阻塞至其他线程获取该插入的元素），并指定执行器的饱和策略为中止策略，然后提交两个任务，提交第二个任务时由于第一个任务使线程睡眠 250 毫秒（ waitFor() 方法让线程睡眠给定毫秒数）且由于工作队列中没有其他线程，中止策略将会拒绝第二个任务的执行并返回 RejectedExecutionException 异常。
+在上面的测试中，我们创建了一个核心线程数及最大线程数都是 1 的线程池，并指定工作队列为同步式阻塞队列 SynchronousQueue（SynchronousQueue 队列的每一个插入操作都会阻塞至其他线程获取该插入的元素），并指定执行器的饱和策略为中止策略，然后提交两个任务，提交第二个任务时由于第一个任务使线程睡眠 250 毫秒（waitFor() 方法让线程睡眠给定毫秒数）且由于工作队列中没有其他线程，中止策略将会拒绝第二个任务的执行并返回 RejectedExecutionException 异常。
 
 ## 调度者运行策略（Caller-Runs Policy）
 

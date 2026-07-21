@@ -183,13 +183,13 @@ Extraction successful!
 
 除了本地模型，LangExtract 也可以接入 OpenAI 模型。使用前需要先配置 OpenAI API Key。推荐将 API Key 保存到环境变量中，避免直接写入代码。
 
-Linux / macOS:
+Linux / macOS：
 
 ```bash
 export OPENAI_API_KEY="your_api_key"
 ```
 
-Windows PowerShell:
+Windows PowerShell：
 
 ```powershell
 $env:OPENAI_API_KEY="your_api_key"
