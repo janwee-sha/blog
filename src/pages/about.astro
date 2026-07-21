@@ -1,20 +1,20 @@
 ---
-import {getEntry, render} from "astro:content";
+import { getEntry, render } from "astro:content";
 import Markdown from "@components/misc/Markdown.astro";
-import {Icon} from "astro-icon/components";
+import { Icon } from "astro-icon/components";
 import I18nKey from "../i18n/i18nKey";
-import {i18n} from "../i18n/translation";
+import { i18n } from "../i18n/translation";
 import MainGridLayout from "../layouts/MainGridLayout.astro";
-import {meConfig} from "../me.config";
-import {findSocialLink, getExperienceYears} from "../utils/me-utils";
+import { meConfig } from "../me.config";
+import { findSocialLink, getExperienceYears } from "../utils/me-utils";
 
 const aboutPost = await getEntry("spec", "about");
 
 if (!aboutPost) {
-    throw new Error("About page content not found");
+	throw new Error("About page content not found");
 }
 
-const {Content, headings} = await render(aboutPost);
+const { Content, headings } = await render(aboutPost);
 const experienceYears = getExperienceYears();
 const githubLink = findSocialLink("github");
 const pageDescription = `关于 ${meConfig.penName}：一名拥有 ${experienceYears} 年开发经验的${meConfig.role}，记录开发实践、技术理解、灵感与爱好。`;
