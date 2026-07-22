@@ -1,6 +1,7 @@
 ---
 title: "使用 GitHub Actions、GHCR、Docker Compose 搭建 CI/CD 管道"
 published: 2026-07-21
+updated: 2026-07-22
 description: "以 React + Vite 时钟应用为例，使用 GitHub Actions 在 Pull Request 中执行测试和构建，将 main 分支发布为 GHCR 镜像，并通过 SSH 和 Docker Compose 部署到 Linux 主机；健康检查失败时自动回滚。"
 image: ""
 tags: ["CI/CD 管道", "Docker", "GHCR", "GitHub Actions"]
@@ -166,27 +167,34 @@ docker compose version
 ```
 
 > [!WARNING]
-> 能够访问 Docker daemon 的账户通常具有接近 root 的权限。应使用专用部署账户，限制其 SSH 来源，并为生产主机配置防火墙。不要把个人日常使用的 SSH 私钥交给 GitHub Actions。
+> 能够访问 Docker daemon 的账户通常具有接近 root 的权限。应使用专用部署账户，把 Actions 公钥限制为只能执行部署包装脚本，并为生产主机配置防火墙。GitHub 托管 Runner 的出口地址会变化，不能把“限制 SSH 来源”当成默认可行的控制。不要把个人日常使用的 SSH 私钥交给 GitHub Actions。
 
 ### 4.1. 配置 SSH 密钥
 
-在可信的管理终端为 GitHub Actions 生成专用密钥：
+在可信的管理终端为 GitHub Actions 生成专用部署密钥：
 
 ```bash
-ssh-keygen -t ed25519 -f github-actions-deploy -C "github-actions-deploy"
-ssh-copy-id -i github-actions-deploy.pub deploy@deploy.example.com
+ssh-keygen -t ed25519 -N '' \
+  -f github-actions-deploy \
+  -C "github-actions-deploy"
 ```
 
-私钥 `github-actions-deploy` 稍后保存到 GitHub Environment Secret，公钥只安装到部署主机的 `deploy` 用户。
+将私钥 `github-actions-deploy` 保存到 GitHub Environment Secret，并按照 6.1 节的受限形式把公钥写入 `deploy` 用户的 `authorized_keys`。
 
-首次连接前，读取主机公钥：
+首次连接前，按实际 SSH 端口读取主机公钥：
 
 ```bash
-ssh-keyscan -t ed25519 deploy.example.com > deploy-known-hosts
+DEPLOY_HOST=192.0.2.10
+DEPLOY_PORT=22
+
+ssh-keyscan -p "$DEPLOY_PORT" -t ed25519 "$DEPLOY_HOST" \
+  > deploy-known-hosts
 ssh-keygen -lf deploy-known-hosts
 ```
 
 通过云服务商控制台或其他可信通道，将这个指纹与部署主机 `/etc/ssh/ssh_host_ed25519_key.pub` 的指纹进行比对。确认一致后，才把 `deploy-known-hosts` 的完整内容保存到 GitHub。不要在工作流中使用 `StrictHostKeyChecking=no` 绕过主机身份验证。
+
+`DEPLOY_HOST` 必须是 GitHub 托管 Runner 能够直接访问 SSH 端口的主机名或 IP 地址。使用域名时，应确认它解析到部署主机，并且中间没有只支持 Web 流量的代理。
 
 ### 4.2. 登录 GHCR
 
@@ -201,6 +209,19 @@ unset CR_PAT
 ```
 
 GHCR 的个人访问令牌需要自行轮换。`docker login` 默认可能把凭据保存在用户目录的 Docker 配置中；生产环境应考虑使用 Docker credential helper。如果镜像被设置为公开，则部署主机可以匿名拉取，无需保存这个令牌。
+
+新建 Package 的可见性需要在首次发布后确认。公开镜像的可靠启动顺序是：先让 `production` Environment 的 reviewer 暂停部署，等待 `publish` Job 创建 Package，再用 GitHub CLI 检查并按需切换可见性，最后批准部署：
+
+```bash
+gh api /user/packages/container/simple-clock-app --jq .visibility
+
+# 仅在上一条命令返回 private 时执行
+gh api --method PATCH \
+  /user/packages/container/simple-clock-app \
+  -f visibility=public
+```
+
+当 API 返回 `public` 时，部署主机可以匿名拉取镜像；返回 `private` 时，应按照前文为部署主机配置只读凭据。仓库的可见性与 Package 的可见性是两个独立设置，应以 Package API 的结果为准。
 
 ## 05. 编写 Docker Compose 配置
 
@@ -220,6 +241,15 @@ services:
 `IMAGE_REF` 不直接写死在 Compose 文件中，而是由部署脚本写入同目录的 `.env`。端口只绑定到主机回环地址，适合由 Nginx、Caddy 或其他反向代理提供 HTTPS；在部署主机上可以通过 `http://127.0.0.1:7100` 验证服务。
 
 Compose 会继承镜像中的 `HEALTHCHECK`。执行 `docker compose up --wait` 时，它会等待容器进入 `healthy` 状态，而不是只确认容器进程已经启动。
+
+`--wait` 和 `--wait-timeout` 不是旧版 Compose 的通用选项。部署前应确认当前插件支持它们，否则脚本会在启动前就失败：
+
+```bash
+docker compose version
+docker compose up --help | grep -- '--wait'
+```
+
+如果帮助信息中没有这些选项，应先升级 Compose 插件，而不是删除等待健康状态的逻辑。
 
 ## 06. 编写部署与回滚脚本
 
@@ -325,15 +355,62 @@ chmod 750 /opt/simple-clock-app/deploy.sh
 
 部署失败时，脚本会打印新容器最后 100 行日志并尝试恢复原镜像。即使回滚成功，它仍返回非零状态，这样 GitHub Actions 不会把一次失败后回滚的发布错误标记为成功。首次部署还没有旧版本，如果新容器不健康，脚本会停止它并等待人工修复。
 
+### 6.1. 限制部署密钥可以执行的命令
+
+仅在工作流中校验变量不够，因为 SSH 私钥一旦泄露，攻击者仍可能尝试打开交互式 shell。创建 `/opt/simple-clock-app/ssh-deploy-wrapper.sh`：
+
+```bash title="/opt/simple-clock-app/ssh-deploy-wrapper.sh"
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+readonly ORIGINAL_COMMAND="${SSH_ORIGINAL_COMMAND:-}"
+
+if [[ "$ORIGINAL_COMMAND" =~ ^deploy[[:space:]]+(ghcr\.io/janwee-sha/simple-clock-app@sha256:[0-9a-f]{64})$ ]]; then
+    exec /opt/simple-clock-app/deploy.sh "${BASH_REMATCH[1]}"
+fi
+
+echo "Rejected SSH command." >&2
+exit 126
+```
+
+脚本由 root 持有、`deploy` 组可执行：
+
+```bash
+sudo chown root:deploy \
+  /opt/simple-clock-app/deploy.sh \
+  /opt/simple-clock-app/ssh-deploy-wrapper.sh
+sudo chmod 750 \
+  /opt/simple-clock-app/deploy.sh \
+  /opt/simple-clock-app/ssh-deploy-wrapper.sh
+```
+
+将前面生成的公钥写入 `/home/deploy/.ssh/authorized_keys` 时，在公钥前添加以下选项：
+
+```text title="/home/deploy/.ssh/authorized_keys"
+restrict,command="/opt/simple-clock-app/ssh-deploy-wrapper.sh" ssh-ed25519 <PUBLIC_KEY> github-actions-deploy
+```
+
+`restrict` 会关闭端口转发、代理转发、X11 和 PTY，`command` 则忽略客户端请求的实际程序，只运行包装脚本。只有格式正确的 `deploy ghcr.io/...@sha256:...` 命令才能进入部署脚本，这个限制比仅依赖工作流里的字符串校验更可靠。
+
 ## 07. 配置 GitHub Environment
 
-在 GitHub 仓库的“Settings > Environments”中创建 `production` Environment。
+使用 GitHub CLI 创建 `production` Environment：
+
+```bash
+gh auth login --web \
+  --scopes repo,workflow,write:packages
+
+gh api --method PUT \
+  repos/janwee-sha/simple-clock-app/environments/production \
+  -F wait_timer=0 \
+  -F prevent_self_review=false
+```
 
 添加以下 Environment Variables：
 
 | 名称 | 示例 | 用途 |
 | --- | --- | --- |
-| `DEPLOY_HOST` | `deploy.example.com` | 部署主机名或 IPv4 地址 |
+| `DEPLOY_HOST` | `192.0.2.10` | 源站 IPv4 或 DNS-only 主机名 |
 | `DEPLOY_PORT` | `22` | SSH 端口 |
 | `DEPLOY_USER` | `deploy` | 专用部署用户 |
 | `APP_URL` | `https://app.example.com` | 显示在 GitHub Deployment 中的应用地址 |
@@ -345,7 +422,24 @@ chmod 750 /opt/simple-clock-app/deploy.sh
 | `DEPLOY_SSH_KEY` | `github-actions-deploy` 私钥的完整内容 |
 | `DEPLOY_KNOWN_HOSTS` | 已核对指纹的 `deploy-known-hosts` 完整内容 |
 
-将 Environment 的部署分支限制为 `main`。如果当前仓库和 GitHub 套餐支持 Required reviewers，还可以要求人工批准生产部署。部署 Job 在保护规则通过前无法读取 Environment Secrets。
+通过 `gh` 写入变量和 Secret；`gh secret set` 会在本地使用 Environment 公钥加密内容后上传：
+
+```bash
+gh variable set DEPLOY_HOST --env production --body 192.0.2.10
+gh variable set DEPLOY_PORT --env production --body 22
+gh variable set DEPLOY_USER --env production --body deploy
+gh variable set APP_URL --env production \
+  --body https://app.example.com
+
+gh secret set DEPLOY_SSH_KEY --env production \
+  < github-actions-deploy
+gh secret set DEPLOY_KNOWN_HOSTS --env production \
+  < deploy-known-hosts
+```
+
+命令默认作用于当前仓库；从其他目录执行时应补上 `--repo OWNER/REPO`。上传成功并验证受限公钥可用后，删除管理终端上的临时私钥副本。
+
+将 Environment 的部署分支限制为 `main`。如果当前仓库和 GitHub 套餐支持 Required reviewers，建议至少在首次发布时要求人工批准：这样可以先确认 GHCR Package 可匿名拉取，再放行生产部署。部署 Job 在保护规则通过前无法读取 Environment Secrets。
 
 ## 08. 编写 GitHub Actions 工作流
 
@@ -362,7 +456,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: janwee-sha/simple-clock-app
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   test:
@@ -372,10 +466,10 @@ jobs:
       contents: read
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: "22"
           cache: npm
@@ -401,21 +495,21 @@ jobs:
       digest: ${{ steps.build.outputs.digest }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Log in to GHCR
-        uses: docker/login-action@v4
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
 
       - name: Build and push image
         id: build
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
         with:
           context: .
           push: true
@@ -457,7 +551,7 @@ jobs:
           DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
           DEPLOY_PORT: ${{ vars.DEPLOY_PORT }}
           DEPLOY_USER: ${{ vars.DEPLOY_USER }}
-          IMAGE: ghcr.io/janwee-sha/simple-clock-app
+          IMAGE: ghcr.io/${{ github.repository }}
           DIGEST: ${{ needs.publish.outputs.digest }}
         run: |
           DEPLOY_PORT="${DEPLOY_PORT:-22}"
@@ -465,24 +559,66 @@ jobs:
           [[ "$DEPLOY_HOST" =~ ^[A-Za-z0-9.-]+$ ]]
           [[ "$DEPLOY_PORT" =~ ^[0-9]+$ ]]
           [[ "$DEPLOY_USER" =~ ^[a-z_][a-z0-9_-]*$ ]]
+          [[ "$IMAGE" =~ ^ghcr\.io/[a-z0-9_.-]+/[a-z0-9_.-]+$ ]]
           [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
 
           ssh \
+            -o BatchMode=yes \
+            -o ConnectTimeout=15 \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
             -p "$DEPLOY_PORT" \
             -i "$HOME/.ssh/id_ed25519" \
             "$DEPLOY_USER@$DEPLOY_HOST" \
-            "/opt/simple-clock-app/deploy.sh '$IMAGE@$DIGEST'"
+            "deploy $IMAGE@$DIGEST"
+
+      - name: Verify public endpoint
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+        run: |
+          [[ "$APP_URL" =~ ^https://[A-Za-z0-9.-]+/?$ ]]
+          curl --fail --show-error --silent \
+            --retry 6 --retry-all-errors --retry-delay 5 \
+            "$APP_URL" > /dev/null
 ```
 
 `test` Job 同时服务于 Pull Request 和 `main` 分支，按锁文件安装依赖后执行单元测试和生产构建。`publish` 只在 `push` 事件中运行，因此 Pull Request 不会获得 `packages: write` 权限，也接触不到生产凭据。发布 Job 使用短期 `GITHUB_TOKEN` 登录 GHCR，无需创建额外的写入令牌；应用构建由 Dockerfile 的第一阶段完成，最终镜像只包含 Nginx 和静态文件。
 
 镜像同时带有完整 Git commit SHA 标签和便于查看的 `main` 标签。标签可以移动，因此部署 Job 没有使用标签，而是读取 `build-push-action` 返回的 digest，并让生产主机拉取 `ghcr.io/janwee-sha/simple-clock-app@sha256:...`。这样即使某个标签后来被覆盖，已经记录的部署版本仍然指向相同镜像内容。
 
-示例使用撰写本文时各 Action 的当前主版本标签，以便阅读。GitHub 建议在安全要求较高的生产仓库中将外部 Action 固定到完整 commit SHA，并使用 Dependabot 持续更新；完整 SHA 不会像可移动标签一样在不知情的情况下指向其他代码。
+工作流把外部 Action 固定到相应主版本标签指向的完整 commit SHA，注释则保留可读的主版本号。完整 SHA 不会像可移动标签一样在不知情的情况下指向其他代码；同时应使用 Dependabot 持续更新这些 SHA，而不是永久停留在当前提交。
 
 ## 09. 首次部署与验证
 
-把 `Dockerfile`、`.dockerignore` 和 `.github/workflows/pipeline.yml` 提交到特性分支并创建 Pull Request。`Test and build` Job 成功后合并到 `main`，工作流将继续发布镜像并进入 `production` 部署。
+把 `Dockerfile`、`.dockerignore`、`.github/workflows/pipeline.yml` 和 `deploy/` 下的主机配置提交到特性分支。使用 GitHub CLI 创建 PR、等待 CI 并合并：
+
+```bash
+gh pr create --draft --base main \
+  --title "Add secure GitHub Actions CI/CD pipeline"
+gh pr checks --watch
+gh pr ready
+gh pr merge --squash
+```
+
+`Test and build` Job 成功后，合并触发 `publish`。首次部署在 reviewer 处暂停时，先按 4.2 节确认 Package 为公开，再通过 API 批准对应 Environment：
+
+```bash
+RUN_ID="$(gh run list --workflow pipeline.yml \
+  --branch main --limit 1 --json databaseId \
+  --jq '.[0].databaseId')"
+
+ENVIRONMENT_ID="$(gh api \
+  "repos/{owner}/{repo}/actions/runs/$RUN_ID/pending_deployments" \
+  --jq '.[0].environment.id')"
+
+gh api --method POST \
+  "repos/{owner}/{repo}/actions/runs/$RUN_ID/pending_deployments" \
+  -F "environment_ids[]=$ENVIRONMENT_ID" \
+  -f state=approved \
+  -f comment="CI, GHCR visibility and deployment prerequisites verified"
+
+gh run watch "$RUN_ID" --exit-status
+```
 
 在部署主机查看状态：
 
@@ -500,20 +636,22 @@ cat .env
 
 ## 10. 验证自动回滚
 
-为了验证回滚链路，可以在测试分支中临时把 Dockerfile 的健康检查改为一个没有服务监听的端口：
+回滚测试会先用不健康容器替换当前容器，再恢复上一版本，因此会造成一段可预期的中断。不要把已知错误的健康检查直接合并到真实业务的 `main`；应在 staging、专用演示应用或明确的维护窗口中执行。
+
+在受控测试分支中，可以临时把 Dockerfile 的健康检查改为一个没有服务监听的端口：
 
 ```dockerfile
 HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=2 \
     CMD wget -q -O /dev/null http://127.0.0.1:65535/ || exit 1
 ```
 
-合并后，新容器会变为 `unhealthy`，`docker compose up --wait` 返回失败。部署脚本随后恢复 `.env` 中原来的 digest、重新创建旧容器，并以退出码 `1` 结束。最终应同时看到以下结果：
+将这个测试镜像发布为独立标签并取得它的 digest。在维护窗口内手动把该 digest 交给同一个部署脚本，新容器会变为 `unhealthy`，`docker compose up --wait` 返回失败。部署脚本随后恢复 `.env` 中原来的 digest、重新创建旧容器，并以退出码 `1` 结束。最终应同时看到以下结果：
 
-- GitHub Actions 的 Deploy Job 失败，提醒维护者处理问题。
+- 触发部署的一方得到非零退出状态，提醒维护者处理问题。
 - Linux 主机上的应用仍由上一个健康镜像提供服务。
 - 部署日志包含失败容器的最后 100 行输出和回滚结果。
 
-验证完毕后撤销错误的健康检查，再通过正常 Pull Request 发布修复版本。
+测试镜像不应覆盖 `main` 标签。验证完毕后删除或清楚标记测试版本，确认 `.env` 和运行中的容器都已恢复到原 digest，再结束维护窗口。
 
 如果需要手动恢复某个已知 digest，可以在部署主机执行：
 
@@ -529,10 +667,10 @@ HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=2 \
 这条管道刻意把构建权限、发布权限和生产凭据分开，但仍需要注意以下事项：
 
 1. 为每个 Job 单独声明最小 `GITHUB_TOKEN` 权限；只有 `publish` 需要 `packages: write`。
-2. 把 SSH 私钥放在受保护的 `production` Environment，而不是写入仓库或普通配置文件。
+2. 把 SSH 私钥放在受保护的 `production` Environment，并用 `authorized_keys` 的 `restrict` 和 forced command 限制公钥，而不是写入仓库或授予普通 shell。
 3. 验证 SSH 主机指纹，不使用 `StrictHostKeyChecking=no`。
-4. 私有镜像的服务器令牌只授予 `read:packages`，定期轮换，并在人员变动或疑似泄露后立即吊销。
-5. 定期更新 Action、基础镜像、Node.js、Nginx 和 Docker Engine；生产工作流可将 Action 固定到完整 commit SHA。
+4. 私有镜像的服务器令牌只授予 `read:packages`，定期轮换，并在人员变动或疑似泄露后立即吊销；公开镜像则不在主机保存 GHCR 凭据。
+5. 定期更新 Action、基础镜像、Node.js、Nginx 和 Docker Engine，并把生产 Action 固定到完整 commit SHA。
 6. 示例默认构建 `linux/amd64` 镜像；部署到 ARM64 主机时，需要配置 QEMU 并让 Buildx 同时构建 `linux/arm64`。
 7. 这是单主机原地替换方案。需要零停机、多副本调度、渐进式发布或跨主机容灾时，应改用反向代理双实例、Docker Swarm、Kubernetes 或云平台托管的容器服务。
 
@@ -552,3 +690,4 @@ HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=2 \
 10.  simple-clock-app 示例项目：[https://github.com/janwee-sha/simple-clock-app](https://github.com/janwee-sha/simple-clock-app)
 11.  setup-node Action：[https://github.com/actions/setup-node](https://github.com/actions/setup-node)
 12.  Nginx Docker 官方镜像：[https://hub.docker.com/_/nginx](https://hub.docker.com/_/nginx)
+13.  GitHub CLI 手册：[https://cli.github.com/manual/](https://cli.github.com/manual/)
