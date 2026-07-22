@@ -34,7 +34,7 @@ Treat the following structure, extracted from `src/content/posts/domain-driven-d
 ### 2.2. Chapter organization
 
 - Do not add an H1 in the body; the page template renders the frontmatter title as the page H1.
-- Start the body with `## 01. 引言`. Number subsequent H2 chapters consecutively with two-digit Arabic numerals and the form `## NN. 标题`.
+- Start the body with a numbered H2 in the form `## 01. 标题`. Allow any meaningful title text after `01.`; do not require a fixed title such as `引言`. Number subsequent H2 chapters consecutively with two-digit Arabic numerals and the same `## NN. 标题` form.
 - Organize subdivisions as H3 headings in the form `### N.M. 标题`. Use the integer value of the parent chapter without a leading zero, restart `M` at `1` within each parent, and keep it consecutive.
 - Keep the body hierarchy primarily at H2 and H3. Introduce deeper levels only when the content genuinely requires them and flag the departure for user review.
 - Reserve the final unnumbered H2 heading `## 引用` for source entries. Exclude it from chapter numbering and do not place another chapter after it.

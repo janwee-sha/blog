@@ -344,17 +344,6 @@ def inspect_canonical_structure(
             body_start + 1,
             "body should contain consecutively numbered H2 chapters",
         )
-    else:
-        first_number, first_line, first_title = numbered_chapters[0]
-        if first_number != 1 or first_title != "引言":
-            add(
-                diagnostics,
-                "warning",
-                "invalid-opening-chapter",
-                relative,
-                first_line,
-                "first chapter should be `## 01. 引言`",
-            )
 
     current_chapter: int | None = None
     expected_subsection = 1

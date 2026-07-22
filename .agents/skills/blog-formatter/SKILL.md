@@ -52,7 +52,7 @@ Require at least one confirmation before applying any proposed changes. Ask targ
 
    Treat the script as a deterministic preflight, not as a complete editorial review. Refuse paths outside `src/content/posts/`, missing posts, and ambiguous slugs.
 5. Read every selected post completely. Inspect the whole file when judging terminology, heading structure, numbering, punctuation, consistency, and whether the filename slug is grammatical English that accurately conveys the title and central topic; do not infer meaning from an excerpt.
-6. Check every category in the required checklist, including the canonical epigraph, chapter, and reference-list structure extracted from `domain-driven-design.md`. Treat those structural conventions as repository publication rules, not optional examples. Validate local links and deduplicated external links during this phase. Do not edit while checking.
+6. Check every category in the required checklist, including the canonical epigraph, numbered-chapter hierarchy, and reference-list structure extracted from `domain-driven-design.md`. Treat those structural conventions as repository publication rules, not optional examples, but allow the first chapter to use any meaningful title after `## 01.` instead of requiring `引言`. Validate local links and deduplicated external links during this phase. Do not edit while checking.
 7. Build a proposed repair set with exact file and line locations, the current text or condition, the recommended change, and the reason. For a slug finding, cite the current file path and the frontmatter title line.
 
 ## Phase 2: Review with the user
