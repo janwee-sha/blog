@@ -2,7 +2,7 @@
 title: "使用 GitHub Actions、GHCR、Docker Compose 搭建 CI/CD 管道"
 published: 2026-07-21
 updated: 2026-07-22
-description: "以 React + Vite 时钟应用为例，使用 GitHub Actions 在 Pull Request 中执行测试和构建，将 main 分支发布为 GHCR 镜像，并通过 SSH 和 Docker Compose 部署到 Linux 主机；健康检查失败时自动回滚。"
+description: "以一个简单时钟应用为例，使用 GitHub Actions、GHCR、Docker Compose 搭建 CI/CD 管道。"
 image: ""
 tags: ["CI/CD 管道", "Docker", "GHCR", "GitHub Actions"]
 category: "DevOps"
@@ -16,7 +16,7 @@ lang: "zh_CN"
 
 ## 01. 目标与流程
 
-持续集成（Continuous Integration，CI）的重点是尽早验证变更，持续交付或部署（Continuous Delivery/Deployment，CD）则负责把通过验证的产物送到目标环境。本文将使用 GitHub Actions、GitHub Container Registry（GHCR）和 Docker Compose 搭建一条完整管道：
+本文演示使用 GitHub Actions、GitHub Container Registry（GHCR）和 Docker Compose 搭建一条完整的 CI/CD 管道。整体流程如下：
 
 1. Pull Request 指向 `main` 时安装锁定依赖，执行单元测试和生产构建。
 2. 代码合并到 `main` 后再次通过验证，再构建 Docker 镜像并推送到 GHCR。
@@ -37,9 +37,9 @@ flowchart TB
     Health -->|失败| Rollback[恢复上一个 digest]
 ```
 
-本文使用 [simple-clock-app](https://github.com/janwee-sha/simple-clock-app) 作为示例。这是一个使用 React 19、TypeScript 和 Vite 8 构建的简单时钟应用，要求 Node.js 22.12.0 或更高版本。构建产物位于 `dist/`，访问根路径会显示根据浏览器本地时间实时转动的圆盘时钟。
+[simple-clock-app](https://github.com/janwee-sha/simple-clock-app) 是一个使用 React 19、TypeScript 和 Vite 8 构建的简单时钟应用，要求 Node.js 22.12.0 或更高版本，访问根路径会显示根据浏览器本地时间实时转动的圆盘时钟。构建产物位于 `dist/`。我们将以它作为示例搭建我们的 CI/CD 流水线。
 
-本文的目标环境是一台安装了 Docker Engine、Docker Compose V2 和 SSH 服务的 `linux/amd64` 主机。GitHub 托管的 Runner 必须能够访问该主机的 SSH 端口。本方案适合个人服务或中小型单机应用；更新容器时会有短暂中断，并不提供滚动发布或零停机能力。
+目标环境是一台安装了 Docker Engine、Docker Compose V2 和 SSH 服务的 `linux/amd64` 主机。GitHub 托管的 Runner 能够访问该主机的 SSH 端口。本方案适合个人服务或中小型单机应用；更新容器时会有短暂中断，并不提供滚动发布或零停机能力。
 
 ## 02. 准备示例应用
 
