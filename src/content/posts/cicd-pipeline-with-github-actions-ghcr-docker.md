@@ -175,7 +175,15 @@ exit
 
 GitHub Actions 发布与当前仓库关联的镜像时，可以使用自动生成的 `GITHUB_TOKEN`。这个令牌在每个 Job 开始时由 GitHub 签发，Job 结束后自动失效；下一次运行会得到新令牌，不需要手动更新。
 
-部署主机不在 Actions Job 内，不能复用这个短期令牌。如果镜像是私有的，需要创建一个只包含 `read:packages` 权限的 Personal Access Token（classic），然后在部署主机切换到 `deploy` 的登录 shell，登录 GHCR 后返回管理员账户：
+部署主机不在 Actions Job 内，不能复用这个短期令牌。如果镜像是私有的，需要创建一个只包含 `read:packages` 权限的 Personal Access Token（classic）：
+
+1. 登录用于拉取镜像的 GitHub 账户，进入 **Settings → Developer settings → Personal access tokens → Tokens (classic)**。
+2. 点击 **Generate new token → Generate new token (classic)**。
+3. 填写用途说明，例如 `simple-clock-app deploy`，并设置尽可能短的有效期。
+4. 只勾选 `read:packages`。创建令牌的账户本身还必须拥有目标 Package 的读取权限。
+5. 点击 **Generate token** 并立即复制令牌；GitHub 离开页面后不会再次显示完整内容。如果 Package 属于启用了 SAML SSO 的组织，还需为该组织点击 **Configure SSO → Authorize**。
+
+下面的示例假定令牌由 `janwee-sha` 账户创建；如果使用其他有权读取 Package 的账户，应把 `docker login` 中的用户名替换为该账户名。通过密码管理器或其他加密通道把令牌传到部署主机，在 `GHCR token:` 提示后粘贴。`read -s` 不会回显输入，也不会把令牌直接写进命令历史。在部署主机切换到 `deploy` 的登录 shell，登录 GHCR 后返回管理员账户：
 
 ```bash
 sudo -iu deploy
@@ -230,7 +238,7 @@ Compose 会继承镜像中的 `HEALTHCHECK`。执行 `docker compose up --wait` 
 
 ```bash
 docker compose version
-docker compose up --help | grep -- '--wait'
+docker compose up --wait
 ```
 
 如果帮助信息中没有这些选项，应先升级 Compose 插件，而不是删除等待健康状态的逻辑。
