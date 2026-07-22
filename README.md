@@ -2,8 +2,6 @@
 
 基于 [Astro](https://astro.build/) 与 [Fuwari](https://github.com/saicaca/fuwari) 的静态博客。
 
-本仓库所基于的 Fuwari 项目说明见 [Fuwari README](docs/fuwari/README.md)。
-
 ## 本地开发
 
 需要 Node.js 22 和 pnpm 9.14.4：
@@ -28,12 +26,6 @@ pnpm check:site
 ```bash
 pnpm preview
 ````
-
-## 个人信息配置
-
-笔名、职业、头像、Bio、从业起始日期、关注领域和社交链接统一配置在
-[`src/me.config.ts`](src/me.config.ts)。工作年限会根据 `careerStartedAt` 按完整周年自动计算，
-并在构建时写入页面。
 
 ## 发布新文章
 
@@ -68,18 +60,7 @@ lang: "zh_CN"
 ---
 ```
 
-图片可放在 `public/uploads/` 并使用相对路径引用。
-
-## Cloudflare Pages
-
-生产项目通过 Git 集成连接本仓库：
-
-- Framework preset：Astro
-- Production branch：`main`
-- Build command：`pnpm build`
-- Build output directory：`dist`
-- `NODE_VERSION`：`22.22.1`
-- `PNPM_VERSION`：`9.14.4`
+图片需放在 `public/uploads/` 并使用相对路径引用。
 
 ## 许可证
 
