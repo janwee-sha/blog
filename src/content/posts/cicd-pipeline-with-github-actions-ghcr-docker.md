@@ -9,7 +9,11 @@ draft: false
 lang: "zh_CN"
 ---
 
-## 1. 目标与流程
+> 凡事豫则立，不豫则废
+>
+> ——《礼记·中庸》
+
+## 01. 目标与流程
 
 持续集成（Continuous Integration，CI）的重点是尽早验证变更，持续交付或部署（Continuous Delivery/Deployment，CD）则负责把通过验证的产物送到目标环境。本文将使用 GitHub Actions、GitHub Container Registry（GHCR）和 Docker Compose 搭建一条完整管道：
 
@@ -36,7 +40,7 @@ flowchart TB
 
 本文的目标环境是一台安装了 Docker Engine、Docker Compose V2 和 SSH 服务的 `linux/amd64` 主机。GitHub 托管的 Runner 必须能够访问该主机的 SSH 端口。本方案适合个人服务或中小型单机应用；更新容器时会有短暂中断，并不提供滚动发布或零停机能力。
 
-## 2. 准备示例应用
+## 02. 准备示例应用
 
 克隆示例仓库：
 
@@ -64,7 +68,7 @@ npm run build
 
 `npm test` 使用 Vitest 和 jsdom 运行 `src/App.test.tsx` 中的 3 个测试，验证时钟表盘、日期时间和定时刷新行为。`npm run build` 先执行 TypeScript 类型检查，再让 Vite 生成 `dist/`。实际项目还应根据功能复杂度补充端到端测试和浏览器兼容性验证。
 
-## 3. 构建应用镜像
+## 03. 构建应用镜像
 
 在仓库根目录创建 `Dockerfile`：
 
@@ -89,33 +93,33 @@ HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=3 \
     CMD wget -q -O /dev/null http://127.0.0.1/ || exit 1
 ```
 
-上面的 `Dockerfile` 使用“多阶段构建”：第一阶段编译 React 应用，第二阶段只用 NGINX 提供生成的静态文件。各指令的作用如下：
+上面的 `Dockerfile` 使用“多阶段构建”：第一阶段编译 React 应用，第二阶段只用 Nginx 提供生成的静态文件。各指令的作用如下：
 
-a. `FROM node:22-alpine AS build` 以 Node.js 22 的 Alpine 镜像作为构建环境，并将该阶段命名为 `build`。Alpine 版本体积较小。
+1. `FROM node:22-alpine AS build` 以 Node.js 22 的 Alpine 镜像作为构建环境，并将该阶段命名为 `build`。Alpine 版本体积较小。
 
-b. `WORKDIR /app` 将容器内的工作目录设置为 `/app`。后续的 `COPY`、`RUN` 等指令默认在这里执行。
+2. `WORKDIR /app` 将容器内的工作目录设置为 `/app`。后续的 `COPY`、`RUN` 等指令默认在这里执行。
 
-c. `COPY package.json package-lock.json ./` 先只复制依赖清单和锁文件。这样源码变化但依赖未变化时，Docker 可以复用依赖安装层的缓存。指令前两个引用路径是构建上下文中的源路径，最后一个引用路径表示的是镜像内的目标路径。
+3. `COPY package.json package-lock.json ./` 先只复制依赖清单和锁文件。这样源码变化但依赖未变化时，Docker 可以复用依赖安装层的缓存。指令前两个引用路径是构建上下文中的源路径，最后一个引用路径表示的是镜像内的目标路径。
 
-d. `RUN npm ci` 严格按照 `package-lock.json` 安装依赖。锁文件与 `package.json` 不一致时会失败，适合可复现的镜像构建。
+4. `RUN npm ci` 严格按照 `package-lock.json` 安装依赖。锁文件与 `package.json` 不一致时会失败，适合可复现的镜像构建。
 
-e. `COPY . .` 将构建上下文中的其余文件复制到 `/app`。`.dockerignore` 中排除的文件不会被复制。
+5. `COPY . .` 将构建上下文中的其余文件复制到 `/app`。`.dockerignore` 中排除的文件不会被复制。
 
-f. `RUN npm run build` 执行项目的生产构建命令：
+6. `RUN npm run build` 执行项目的生产构建命令。
 
-g. `FROM nginx:stable-alpine` 开始一个全新的运行阶段，使用官方 NGINX Alpine 镜像。新阶段不会自动包含前一阶段的 Node.js、npm、源码或依赖，因此最终镜像更小，攻击面也更少。
+7. `FROM nginx:stable-alpine` 开始一个全新的运行阶段，使用官方 Nginx Alpine 镜像。新阶段不会自动包含前一阶段的 Node.js、npm、源码或依赖，因此最终镜像更小，攻击面也更少。
 
-h. `COPY --from=build /app/dist /usr/share/nginx/html` 只把 `build` 阶段生成的静态文件复制到 NGINX 默认网站目录。容器启动后，NGINX 会直接提供其中的 `index.html`、JavaScript 和 CSS 文件。
+8. `COPY --from=build /app/dist /usr/share/nginx/html` 只把 `build` 阶段生成的静态文件复制到 Nginx 默认网站目录。容器启动后，Nginx 会直接提供其中的 `index.html`、JavaScript 和 CSS 文件。
 
-i. `EXPOSE 80` 声明应用在容器内使用 HTTP 端口 `80`。它只是镜像元数据，不会自动把端口开放到宿主机。运行时仍需映射端口。
+9. `EXPOSE 80` 声明应用在容器内使用 HTTP 端口 `80`。它只是镜像元数据，不会自动把端口开放到宿主机。运行时仍需映射端口。
 
-j. `HEALTHCHECK` 指令定义容器健康检查：
+10. `HEALTHCHECK` 指令定义容器健康检查：
 
 - `--interval=10s`：每 10 秒检查一次。
 - `--timeout=3s`：单次检查最多等待 3 秒。
 - `--start-period=10s`：启动后的前 10 秒为宽限期。
 - `--retries=3`：连续失败 3 次后标记为 unhealthy。
-- `wget -q`：安静地请求 NGINX 根路径。
+- `wget -q`：安静地请求 Nginx 根路径。
 - `-O /dev/null`：丢弃响应内容。
 - `|| exit 1`：请求失败时返回非零退出码。
 
@@ -144,7 +148,7 @@ docker run --rm --name simple-clock-app-local -p 7100:80 simple-clock-app:local
 
 另开一个终端访问 `http://127.0.0.1:7100`。确认应用正常后，按 `Ctrl+C` 停止容器。
 
-## 4. 准备 Linux 部署主机
+## 04. 准备 Linux 部署主机
 
 按照 [Docker Engine 官方安装指引](https://docs.docker.com/engine/install/) 安装 Docker Engine 和 Docker Compose 插件。然后创建专用部署用户和应用目录：
 
@@ -198,7 +202,7 @@ unset CR_PAT
 
 GHCR 的个人访问令牌需要自行轮换。`docker login` 默认可能把凭据保存在用户目录的 Docker 配置中；生产环境应考虑使用 Docker credential helper。如果镜像被设置为公开，则部署主机可以匿名拉取，无需保存这个令牌。
 
-## 5. 编写 Docker Compose 配置
+## 05. 编写 Docker Compose 配置
 
 以 `deploy` 用户登录服务器，在 `/opt/simple-clock-app` 中创建 `compose.yaml`：
 
@@ -217,7 +221,7 @@ services:
 
 Compose 会继承镜像中的 `HEALTHCHECK`。执行 `docker compose up --wait` 时，它会等待容器进入 `healthy` 状态，而不是只确认容器进程已经启动。
 
-## 6. 编写部署与回滚脚本
+## 06. 编写部署与回滚脚本
 
 在 `/opt/simple-clock-app` 中创建 `deploy.sh`：
 
@@ -321,7 +325,7 @@ chmod 750 /opt/simple-clock-app/deploy.sh
 
 部署失败时，脚本会打印新容器最后 100 行日志并尝试恢复原镜像。即使回滚成功，它仍返回非零状态，这样 GitHub Actions 不会把一次失败后回滚的发布错误标记为成功。首次部署还没有旧版本，如果新容器不健康，脚本会停止它并等待人工修复。
 
-## 7. 配置 GitHub Environment
+## 07. 配置 GitHub Environment
 
 在 GitHub 仓库的“Settings > Environments”中创建 `production` Environment。
 
@@ -343,7 +347,7 @@ chmod 750 /opt/simple-clock-app/deploy.sh
 
 将 Environment 的部署分支限制为 `main`。如果当前仓库和 GitHub 套餐支持 Required reviewers，还可以要求人工批准生产部署。部署 Job 在保护规则通过前无法读取 Environment Secrets。
 
-## 8. 编写 GitHub Actions 工作流
+## 08. 编写 GitHub Actions 工作流
 
 在应用仓库创建 `.github/workflows/pipeline.yml`：
 
@@ -476,7 +480,7 @@ jobs:
 
 示例使用撰写本文时各 Action 的当前主版本标签，以便阅读。GitHub 建议在安全要求较高的生产仓库中将外部 Action 固定到完整 commit SHA，并使用 Dependabot 持续更新；完整 SHA 不会像可移动标签一样在不知情的情况下指向其他代码。
 
-## 9. 首次部署与验证
+## 09. 首次部署与验证
 
 把 `Dockerfile`、`.dockerignore` 和 `.github/workflows/pipeline.yml` 提交到特性分支并创建 Pull Request。`Test and build` Job 成功后合并到 `main`，工作流将继续发布镜像并进入 `production` 部署。
 
@@ -534,17 +538,17 @@ HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=2 \
 
 至此，Pull Request 校验、不可变镜像发布、受保护的生产部署、健康检查和自动回滚已经连成一条完整的 CI/CD 管道。各阶段都保留了可追溯的 commit、镜像 digest 和 Actions 日志，出现问题时可以判断失败发生在测试、构建、镜像发布还是生产启动阶段。
 
-## 引用与资源
+## 引用
 
-1. GitHub Actions 工作流语法：[https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax)
-2. 使用 GitHub Actions 发布 Docker 镜像：[https://docs.github.com/en/actions/tutorials/publish-packages/publish-docker-images](https://docs.github.com/en/actions/tutorials/publish-packages/publish-docker-images)
-3. `GITHUB_TOKEN` 的生命周期与权限：[https://docs.github.com/en/actions/concepts/security/github_token](https://docs.github.com/en/actions/concepts/security/github_token)
-4. GHCR 身份验证与镜像管理：[https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry)
-5. GitHub 部署环境与保护规则：[https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments)
-6. GitHub Actions 安全使用指南：[https://docs.github.com/en/actions/reference/security/secure-use](https://docs.github.com/en/actions/reference/security/secure-use)
-7. Docker Build 的 GitHub Actions 集成：[https://docs.docker.com/build/ci/github-actions/](https://docs.docker.com/build/ci/github-actions/)
-8. Docker Compose 变量插值：[https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/](https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/)
-9. `docker compose up` 命令：[https://docs.docker.com/reference/cli/docker/compose/up/](https://docs.docker.com/reference/cli/docker/compose/up/)
-10. simple-clock-app 示例项目：[https://github.com/janwee-sha/simple-clock-app](https://github.com/janwee-sha/simple-clock-app)
-11. setup-node Action：[https://github.com/actions/setup-node](https://github.com/actions/setup-node)
-12. Nginx Docker 官方镜像：[https://hub.docker.com/_/nginx](https://hub.docker.com/_/nginx)
+1.  GitHub Actions 工作流语法：[https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax)
+2.  使用 GitHub Actions 发布 Docker 镜像：[https://docs.github.com/en/actions/tutorials/publish-packages/publish-docker-images](https://docs.github.com/en/actions/tutorials/publish-packages/publish-docker-images)
+3.  `GITHUB_TOKEN` 的生命周期与权限：[https://docs.github.com/en/actions/concepts/security/github_token](https://docs.github.com/en/actions/concepts/security/github_token)
+4.  GHCR 身份验证与镜像管理：[https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry)
+5.  GitHub 部署环境与保护规则：[https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments)
+6.  GitHub Actions 安全使用指南：[https://docs.github.com/en/actions/reference/security/secure-use](https://docs.github.com/en/actions/reference/security/secure-use)
+7.  Docker Build 的 GitHub Actions 集成：[https://docs.docker.com/build/ci/github-actions/](https://docs.docker.com/build/ci/github-actions/)
+8.  Docker Compose 变量插值：[https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/](https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/)
+9.  `docker compose up` 命令：[https://docs.docker.com/reference/cli/docker/compose/up/](https://docs.docker.com/reference/cli/docker/compose/up/)
+10.  simple-clock-app 示例项目：[https://github.com/janwee-sha/simple-clock-app](https://github.com/janwee-sha/simple-clock-app)
+11.  setup-node Action：[https://github.com/actions/setup-node](https://github.com/actions/setup-node)
+12.  Nginx Docker 官方镜像：[https://hub.docker.com/_/nginx](https://hub.docker.com/_/nginx)

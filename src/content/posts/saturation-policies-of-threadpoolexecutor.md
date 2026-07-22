@@ -2,20 +2,22 @@
 title: "Java 线程池执行器的饱和策略"
 published: 2023-04-24
 updated: 2024-02-01
-description: "简介 在 Java 程序中，当线程池 ThreadPoolExecutor 中的任务数超过最大线程数的阈值且工作队列已满时，线程池会根据线程池指定的饱和策略来处理新的任务。通过传递一个 RejectedExecutionHandler 类的实例给线程池模型 ThreadPoolExecutor 的构造器，我们可以修改 Java 中线程池执行器的饱和策略。 中"
+description: "介绍 ThreadPoolExecutor 的四种饱和策略，并通过 Java 示例演示各策略的处理方式。"
 image: ""
 tags: ["Java", "线程池"]
-category: "JAVA"
+category: "Java"
 draft: false
 lang: "zh_CN"
 ---
-> 瀑布歌道：“我得到自由时便有歌声了。”
+> 持而盈之，不如其已
+>
+> ——《道德经·第九章》
 
-## 简介
+## 01. 简介
 
 在 Java 程序中，当线程池 ThreadPoolExecutor 中的任务数超过最大线程数的阈值且工作队列已满时，线程池会根据线程池指定的饱和策略来处理新的任务。通过传递一个 RejectedExecutionHandler 类的实例给线程池模型 ThreadPoolExecutor 的构造器，我们可以修改 Java 中线程池执行器的饱和策略。
 
-## 中止策略（Abort Policy）
+## 02. 中止策略（Abort Policy）
 
 中止策略是线程池的默认策略。中止策略使执行器抛出一个 RejectedExecutionException 异常。
 
@@ -57,13 +59,13 @@ private void waitFor(long milli) {
 
 在上面的测试中，我们创建了一个核心线程数及最大线程数都是 1 的线程池，并指定工作队列为同步式阻塞队列 SynchronousQueue（SynchronousQueue 队列的每一个插入操作都会阻塞至其他线程获取该插入的元素），并指定执行器的饱和策略为中止策略，然后提交两个任务，提交第二个任务时由于第一个任务使线程睡眠 250 毫秒（waitFor() 方法让线程睡眠给定毫秒数）且由于工作队列中没有其他线程，中止策略将会拒绝第二个任务的执行并返回 RejectedExecutionException 异常。
 
-## 调度者运行策略（Caller-Runs Policy）
+## 03. 调度者运行策略（Caller-Runs Policy）
 
 该策略使调度者线程自己执行该任务。
 
 JDK 1.8 中的源码如下：
 
-```text
+```java
 public void rejectedExecution(Runnable r, ThreadPoolExecutor e) {
     if (!e.isShutdown()) {
         r.run();
@@ -94,13 +96,13 @@ public void testCallerRuns() {
 
 测试方法和上述中止策略的测试方法一样，创建了一个核心线程数及最大线程数都是 1 的线程池，并指定工作队列为同步式阻塞队列，这一次我们指定线程池饱和策略为调度者运行，和中止策略中的情形类似，提交的两个任务中第二个任务没有对应的线程执行，此时执行器会让调度者线程（即测试方法中的主线程）执行该任务。
 
-## 丢弃策略（Discard Policy）
+## 04. 丢弃策略（Discard Policy）
 
 该策略在新任务提交失败时静默地丢弃新任务。
 
 JDK 1.8 中的源码如下：
 
-```text
+```java
 public void rejectedExecution(Runnable r, ThreadPoolExecutor e) {
 }
 ```
@@ -126,7 +128,7 @@ public void testDiscard() throws InterruptedException {
 
 线程池的属性除饱和策略为丢弃策略外其他属性都和前面一样，提交两个任务，第二个任务向一个队列中插入字符串，但由于新任务会被执行器静默地拒绝，队列为空。
 
-## 丢弃最老任务策略（Discard-Oldest Policy）
+## 05. 丢弃最老任务策略（Discard-Oldest Policy）
 
 该策略先删除队列头中的任务，再重新提交新任务。
 

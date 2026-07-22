@@ -2,7 +2,7 @@
 title: "分布式事务之二阶段提交"
 published: 2025-11-30
 updated: 2026-03-17
-description: "01.什么是分布式事务？ 在单体系统中，一次业务操作通常只涉及一个数据库节点，本地事务即可通过 ACID（原子性、一致性、隔离性、持久性）确保数据正确性。但随着系统拆分为微服务、数据分片、读写分离、多数据库架构等分布式模式，同一个业务操作往往涉及多个节点的资源操作。这时，本地事务不再能够保证全局一致性，就需要“分布式事务”。 分布式事务（Distribute"
+description: "介绍分布式事务与二阶段提交（2PC/XA）的基本流程、局限和适用边界，并给出 PostgreSQL 与 Java 示例。"
 image: ""
 tags: ["distributed transaction", "分布式事务"]
 category: "分布式事务"
@@ -13,7 +13,7 @@ lang: "zh_CN"
 >
 > ——《易传·系辞传上》
 
-## 01.什么是分布式事务？
+## 01. 什么是分布式事务？
 
 在单体系统中，一次业务操作通常只涉及一个数据库节点，本地事务即可通过 ACID（原子性、一致性、隔离性、持久性）确保数据正确性。但随着系统拆分为微服务、数据分片、读写分离、多数据库架构等分布式模式，同一个业务操作往往涉及多个节点的资源操作。这时，本地事务不再能够保证全局一致性，就需要“分布式事务”。
 
@@ -137,4 +137,4 @@ public class Postgres2PCDemo {
 
 ## 引用
 
-1.  周志明[《凤凰架构》](https://icyfenix.cn/architect-perspective/general-architecture/transaction/global.html)
+1.  [《凤凰架构》](https://icyfenix.cn/architect-perspective/general-architecture/transaction/global.html)（周志明）

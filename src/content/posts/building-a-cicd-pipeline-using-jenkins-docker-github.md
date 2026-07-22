@@ -13,7 +13,7 @@ lang: "zh_CN"
 >
 > ——《荀子·修身》
 
-## 1. 什么是 CI/CD
+## 01. 什么是 CI/CD
 
 CI/CD 的全称是持续集成/持续交付（Continuous Integration and Continuous Delivery），是一种通过自动化过程加速软件交付的实践。CI/CD 管道是实施 CI/CD 的工作流程。
 
@@ -21,7 +21,7 @@ CI/CD 的全称是持续集成/持续交付（Continuous Integration and Continu
 
 本文省略 Docker 的安装过程，可以参考 [Docker 官方文档](https://docs.docker.com/engine/install/) 安装 Docker Engine 和 Docker Compose。
 
-## 2. 准备 Jenkins 运行环境
+## 02. 准备 Jenkins 运行环境
 
 Jenkins 官方镜像没有预装 Maven、Docker CLI 和 SSH 客户端。为了让 Pipeline 能够构建应用，并通过 SSH 连接独立的 Docker 主机，先创建一个自定义 Jenkins 镜像。这个镜像只安装客户端工具，不在 Jenkins 容器中运行 Docker daemon。
 
@@ -87,7 +87,7 @@ docker exec jenkins docker --version
 docker exec jenkins ssh -V
 ```
 
-## 3. 初始化 Jenkins
+## 03. 初始化 Jenkins
 
 浏览器访问 `http://<your_ip>:8080`，进入 Jenkins 管理界面。
 
@@ -101,7 +101,7 @@ docker exec jenkins cat /var/jenkins_home/secrets/initialAdminPassword
 
 按照向导安装推荐插件并创建管理员用户。本文使用 Pipeline、Git、GitHub 和 SSH Agent 插件；如果没有随推荐插件安装，请在“Manage Jenkins > Plugins”中补充安装。
 
-## 4. 准备示例应用
+## 04. 准备示例应用
 
 本文使用 [simple-web-app](https://github.com/janwee-sha/simple-web-app) 作为示例。这是一个使用 Maven 构建的 Java Web 应用，访问后会返回服务器时间。
 
@@ -261,7 +261,7 @@ pipeline {
 
 这个 Pipeline 会依次检出代码、执行 Maven 构建，再通过 SSH Agent 插件临时注入部署密钥。Docker CLI 根据 `DOCKER_HOST` 连接远程 Docker daemon，在 Docker 主机上构建镜像、替换旧容器并检查新容器是否正在运行。将 `pom.xml`、`Dockerfile` 和 `Jenkinsfile` 一起提交到 GitHub。
 
-## 5. 创建 Pipeline 任务
+## 05. 创建 Pipeline 任务
 
 在 Jenkins 中选择“Dashboard > New Item”，输入任务名称并选择“Pipeline”。
 
@@ -277,7 +277,7 @@ pipeline {
 
 保存任务后，先点击“Build Now”执行一次，使 Jenkins 读取并注册 `Jenkinsfile` 中的触发器。
 
-## 6. 配置 GitHub Webhook
+## 06. 配置 GitHub Webhook
 
 要在代码推送后自动触发 Pipeline，需要确保 GitHub 可以通过 HTTPS 访问 Jenkins，然后在 GitHub 仓库的“Settings > Webhooks”中添加 Webhook：
 
@@ -287,17 +287,17 @@ pipeline {
 
 本地 Jenkins 无法被 GitHub 访问时，可以暂时使用“Build Now”手动触发；不要为了接收 Webhook 而把未配置身份验证和 HTTPS 的 Jenkins 直接暴露到公网。
 
-## 7. 部署并验证应用
+## 07. 部署并验证应用
 
 Pipeline 成功后，浏览器访问 `http://<docker_host>:7100`。页面返回服务器时间，说明 Maven 构建、远程 Docker 镜像构建和容器部署均已完成。
 
 后续向 `main` 分支推送提交时，GitHub Webhook 会通知 Jenkins，Jenkins 再按照仓库中的 `Jenkinsfile` 重新执行整个 Pipeline。
 
-## 引用与资源
+## 引用
 
-1. simple-web-app：[https://github.com/janwee-sha/simple-web-app](https://github.com/janwee-sha/simple-web-app)
-2. Jenkins 官方 Docker 镜像文档：[https://github.com/jenkinsci/docker/blob/master/README.md](https://github.com/jenkinsci/docker/blob/master/README.md)
-3. Jenkins Maven 教程：[https://www.jenkins.io/doc/tutorials/build-a-java-app-with-maven/](https://www.jenkins.io/doc/tutorials/build-a-java-app-with-maven/)
-4. Docker Engine 安装指引：[https://docs.docker.com/engine/install/](https://docs.docker.com/engine/install/)
-5. Docker daemon socket 安全指引：[https://docs.docker.com/engine/security/protect-access/](https://docs.docker.com/engine/security/protect-access/)
-6. Jenkins SSH Agent Pipeline 步骤：[https://www.jenkins.io/doc/pipeline/steps/ssh-agent/](https://www.jenkins.io/doc/pipeline/steps/ssh-agent/)
+1.  simple-web-app：[https://github.com/janwee-sha/simple-web-app](https://github.com/janwee-sha/simple-web-app)
+2.  Jenkins 官方 Docker 镜像文档：[https://github.com/jenkinsci/docker/blob/master/README.md](https://github.com/jenkinsci/docker/blob/master/README.md)
+3.  Jenkins Maven 教程：[https://www.jenkins.io/doc/tutorials/build-a-java-app-with-maven/](https://www.jenkins.io/doc/tutorials/build-a-java-app-with-maven/)
+4.  Docker Engine 安装指引：[https://docs.docker.com/engine/install/](https://docs.docker.com/engine/install/)
+5.  Docker daemon socket 安全指引：[https://docs.docker.com/engine/security/protect-access/](https://docs.docker.com/engine/security/protect-access/)
+6.  Jenkins SSH Agent Pipeline 步骤：[https://www.jenkins.io/doc/pipeline/steps/ssh-agent/](https://www.jenkins.io/doc/pipeline/steps/ssh-agent/)

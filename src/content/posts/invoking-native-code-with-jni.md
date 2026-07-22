@@ -5,13 +5,13 @@ updated: 2026-03-17
 description: "介绍 JNI 的基本调用流程，并通过 Java 与 C/C++ 示例演示本地方法声明、头文件生成、动态库编译、参数传递及多平台注意事项。"
 image: ""
 tags: ["Java", "Java Native Interface"]
-category: "JAVA"
+category: "Java"
 draft: false
 lang: "zh_CN"
 ---
 > 他山之石，可以攻玉
 >
-> ——《诗经·小雅》
+> ——《诗经·小雅·鹤鸣》
 
 ## 01. 引言
 
@@ -27,7 +27,7 @@ lang: "zh_CN"
 
 ## 02. Hello World
 
-### 2.1 准备
+### 2.1. 准备
 
 -   操作系统：Windows 64 位（文中也给出 Linux/macOS 命令）
 -   JDK：8 及以上（需要 `javac -h`）
@@ -48,9 +48,9 @@ jni-with-c
 └── out
 ```
 
-### 2.2 JNI 调用 C 代码
+### 2.2. JNI 调用 C 代码
 
-1) 编写一个调用 C 代码的 Java 类 `CCodeCaller`
+1. 编写一个调用 C 代码的 Java 类 `CCodeCaller`
 
 ```java
 public class CCodeCaller {
@@ -66,7 +66,7 @@ public class CCodeCaller {
 }
 ```
 
-2) 编译并生成本地头文件
+2. 编译并生成本地头文件
 
 ```bash
 javac -h src/cfile -d out src/java/CCodeCaller.java
@@ -111,7 +111,7 @@ C 函数的命名约定是 `Java_{package_and_classname}_{function_name}(JNI_arg
 
 `extern "C"` 只能被 C++ 编译器识别。它通知 C++ 编译器，这些函数将使用 C 的函数命名协议而不是 C++ 的命名协议进行编译。C 和 C++ 有不同的函数命名协议，因为 C++ 支持函数重载，并使用名称混淆方案来区分重载函数。
 
-3) 编写 C 代码 `src/cfile/Hello.c`
+3. 编写 C 代码 `src/cfile/Hello.c`
 
 ```c
 #include <jni.h>         // JDK内置的JNI头文件
@@ -129,7 +129,7 @@ JDK 提供的 JNI 头文件 `jni.h` 可在 `<JAVA_HOME>\include` 和 `<JAVA_HOME
 
 上面的 C 函数只包含向控制台打印“Hello from C using JNI!”的简单动作。
 
-4) 编译生成本地库（Windows + MinGW）
+4. 编译生成本地库（Windows + MinGW）
 
 ```powershell
 gcc -shared -o hello_from_c.dll -I $env:JAVA_HOME/include -I $env:JAVA_HOME/include/win32 src/cfile/Hello.c
@@ -143,7 +143,7 @@ gcc -shared -o hello_from_c.dll -I $env:JAVA_HOME/include -I $env:JAVA_HOME/incl
 
 Linux 与 macOS 的命令见后文“多平台编译”。
 
-5) 打包与运行
+5. 打包与运行
 
 ```bash
 jar cfe JNIWithC.jar CCodeCaller -C out .
@@ -152,11 +152,11 @@ java -Djava.library.path=. -jar JNIWithC.jar
 # 或者使用绝对路径加载：System.load("C:\\abs\\path\\hello_from_c.dll")
 ```
 
-### 2.3 JNI 调用 C++ 代码
+### 2.3. JNI 调用 C++ 代码
 
 上面的例子中，除了 C 代码，我们还可以使用 C++ 代码。其他部分和使用 C 代码没有太大差别，只需将 C 实现替换为 C++ 实现 `Hello.cpp`：
 
-1) Java 类 `CPPCodeCaller`
+1. Java 类 `CPPCodeCaller`
 
 ```java
 public class CPPCodeCaller {
@@ -172,13 +172,13 @@ public class CPPCodeCaller {
 }
 ```
 
-2) 生成头文件
+2. 生成头文件
 
 ```bash
 javac -h src/cfile -d out src/java/CPPCodeCaller.java
 ```
 
-3) C++ 代码 `src/cfile/Hello.cpp`
+3. C++ 代码 `src/cfile/Hello.cpp`
 
 ```cpp
 #include <jni.h>
@@ -190,7 +190,7 @@ JNIEXPORT void JNICALL Java_CPPCodeCaller_hello(JNIEnv *, jobject) {
 }
 ```
 
-4) 编译生成本地库（Windows + MinGW）
+4. 编译生成本地库（Windows + MinGW）
 
 ```powershell
 g++ -shared -o hello_from_cpp.dll -I $env:JAVA_HOME/include -I $env:JAVA_HOME/include/win32 src/cfile/Hello.cpp
@@ -211,7 +211,7 @@ JNI 在本地系统中定义了以下与 Java 类型相对应的 JNI 类型：
 
 ## 04. 本地程序传递参数和返回值
 
-### 4.1 传递基本参数
+### 4.1. 传递基本参数
 
 下面的代码演示 Java 程序向本地方法传递两个 `int` 类型的数值并计算平均值。首先定义一个 Java 类 `src/java/JNIPrimitiveTest.java`：
 
@@ -260,9 +260,9 @@ JNIEXPORT jdouble JNICALL Java_JNIPrimitiveTest_avg
 }
 ```
 
-### 4.2 传递引用类型（字符串、数组、对象）
+### 4.2. 传递引用类型（字符串、数组、对象）
 
-1) 字符串（Modified UTF-8 编码与释放）
+1. 字符串（Modified UTF-8 编码与释放）
 
 ```java
 // Java
@@ -292,7 +292,7 @@ JNIEXPORT jstring JNICALL Java_JNIStringDemo_shout(JNIEnv* env, jobject self, js
 
 要点：`GetStringUTFChars` / `ReleaseStringUTFChars` 成对出现；返回 `NULL` 需立刻返回以传播异常。
 
-2) 基本类型数组（长度、元素访问与释放）
+2. 基本类型数组（长度、元素访问与释放）
 
 ```java
 // Java
@@ -320,7 +320,7 @@ JNIEXPORT jint JNICALL Java_JNIArrayDemo_sum(JNIEnv* env, jobject self, jintArra
 
 批量读写可用 `Get<PrimitiveType>ArrayRegion` / `Set<PrimitiveType>ArrayRegion`。使用 `GetPrimitiveArrayCritical` / `ReleasePrimitiveArrayCritical` 时，应尽量缩短临界区。
 
-3) 对象字段与方法（访问与回调）
+3. 对象字段与方法（访问与回调）
 
 ```java
 // Java
@@ -387,7 +387,7 @@ clang -dynamiclib -o libhello_from_c.dylib -I "$JAVA_HOME/include" -I "$JAVA_HOM
 
 ## 引用
 
-1.  Java 本地接口规范文档 @ [https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/jniTOC.html](https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/jniTOC.html)
-2.  JNI 提示 @ [https://developer.android.com/training/articles/perf-jni?hl=zh-cn](https://developer.android.com/training/articles/perf-jni?hl=zh-cn)
-3.  Java Native Interface @ [https://www3.ntu.edu.sg/home/ehchua/programming/java/javanativeinterface.html](https://www3.ntu.edu.sg/home/ehchua/programming/java/javanativeinterface.html)
-4.  Java Native Interface Wiki @ [https://en.wikipedia.org/wiki/Java\_Native\_Interface](https://en.wikipedia.org/wiki/Java_Native_Interface)
+1.  Java 本地接口规范文档：[https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/jniTOC.html](https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/jniTOC.html)
+2.  JNI 提示：[https://developer.android.com/training/articles/perf-jni?hl=zh-cn](https://developer.android.com/training/articles/perf-jni?hl=zh-cn)
+3.  Java Native Interface：[https://www3.ntu.edu.sg/home/ehchua/programming/java/javanativeinterface.html](https://www3.ntu.edu.sg/home/ehchua/programming/java/javanativeinterface.html)
+4.  Java Native Interface Wiki：[https://en.wikipedia.org/wiki/Java\_Native\_Interface](https://en.wikipedia.org/wiki/Java_Native_Interface)

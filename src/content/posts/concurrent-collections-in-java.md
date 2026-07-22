@@ -5,7 +5,7 @@ updated: 2024-02-04
 description: "介绍 Java 同步容器在复合操作和迭代场景中的局限，并说明 ConcurrentMap、ConcurrentHashMap 等并发容器的线程安全、原子操作与内存一致性语义。"
 image: ""
 tags: ["Java", "并发容器"]
-category: "JAVA"
+category: "Java"
 draft: false
 lang: "zh_CN"
 ---
