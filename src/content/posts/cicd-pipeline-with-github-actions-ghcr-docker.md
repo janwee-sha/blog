@@ -171,34 +171,7 @@ exit
 > [!WARNING]
 > 能够访问 Docker daemon 的账户通常具有接近 root 的权限。应使用专用部署账户，把 Actions 公钥限制为只能执行部署包装脚本，并为生产主机配置防火墙。GitHub 托管 Runner 的出口地址会变化，不能把“限制 SSH 来源”当成默认可行的控制。不要把个人日常使用的 SSH 私钥交给 GitHub Actions。
 
-### 4.1. 配置 SSH 密钥
-
-在可信的管理终端为 GitHub Actions 生成专用部署密钥：
-
-```bash
-ssh-keygen -t ed25519 -N '' \
-  -f github-actions-deploy \
-  -C "github-actions-deploy"
-```
-
-将私钥 `github-actions-deploy` 保存到 GitHub Environment Secret，并按照 6.1 节的受限形式把公钥写入 `deploy` 用户的 `authorized_keys`。
-
-首次连接前，按实际 SSH 端口读取主机公钥：
-
-```bash
-DEPLOY_HOST=192.0.2.10
-DEPLOY_PORT=22
-
-ssh-keyscan -p "$DEPLOY_PORT" -t ed25519 "$DEPLOY_HOST" \
-  > deploy-known-hosts
-ssh-keygen -lf deploy-known-hosts
-```
-
-通过云服务商控制台或其他可信通道，将这个指纹与部署主机 `/etc/ssh/ssh_host_ed25519_key.pub` 的指纹进行比对。确认一致后，才把 `deploy-known-hosts` 的完整内容保存到 GitHub。不要在工作流中使用 `StrictHostKeyChecking=no` 绕过主机身份验证。
-
-`DEPLOY_HOST` 必须是 GitHub 托管 Runner 能够直接访问 SSH 端口的主机名或 IP 地址。使用域名时，应确认它解析到部署主机，并且中间没有只支持 Web 流量的代理。
-
-### 4.2. 登录 GHCR
+### 4.1. 登录 GHCR
 
 GitHub Actions 发布与当前仓库关联的镜像时，可以使用自动生成的 `GITHUB_TOKEN`。这个令牌在每个 Job 开始时由 GitHub 签发，Job 结束后自动失效；下一次运行会得到新令牌，不需要手动更新。
 
@@ -396,13 +369,40 @@ sudo chmod 750 \
   /opt/simple-clock-app/ssh-deploy-wrapper.sh
 ```
 
-将前面生成的公钥写入 `/home/deploy/.ssh/authorized_keys` 时，在公钥前添加以下选项：
+### 6.2. 配置 SSH 部署密钥
+
+包装脚本就绪后，在可信的管理终端为 GitHub Actions 生成专用部署密钥：
+
+```bash
+ssh-keygen -t ed25519 -N '' \
+  -f github-actions-deploy \
+  -C "github-actions-deploy"
+```
+
+命令会在当前目录生成私钥 `github-actions-deploy` 和公钥 `github-actions-deploy.pub`。不要把私钥提交到仓库，也不要发送给部署主机。
+
+在部署主机将公钥写入 `/home/deploy/.ssh/authorized_keys`，并在公钥前添加以下选项；将 `<PUBLIC_KEY>` 替换为 `github-actions-deploy.pub` 中的完整公钥：
 
 ```text title="/home/deploy/.ssh/authorized_keys"
 restrict,command="/opt/simple-clock-app/ssh-deploy-wrapper.sh" ssh-ed25519 <PUBLIC_KEY> github-actions-deploy
 ```
 
 `restrict` 会关闭端口转发、代理转发、X11 和 PTY，`command` 则忽略客户端请求的实际程序，只运行包装脚本。只有格式正确的 `deploy ghcr.io/...@sha256:...` 命令才能进入部署脚本，这个限制比仅依赖工作流里的字符串校验更可靠。
+
+首次连接前，回到可信的管理终端，按实际 SSH 端口读取主机公钥：
+
+```bash
+DEPLOY_HOST=192.0.2.10
+DEPLOY_PORT=22
+
+ssh-keyscan -p "$DEPLOY_PORT" -t ed25519 "$DEPLOY_HOST" \
+  > deploy-known-hosts
+ssh-keygen -lf deploy-known-hosts
+```
+
+通过云服务商控制台或其他可信通道，将这个指纹与部署主机 `/etc/ssh/ssh_host_ed25519_key.pub` 的指纹进行比对。确认一致后，保留私钥 `github-actions-deploy` 和主机公钥记录 `deploy-known-hosts`，下一节会把它们上传到 GitHub。不要在工作流中使用 `StrictHostKeyChecking=no` 绕过主机身份验证。
+
+`DEPLOY_HOST` 必须是 GitHub 托管 Runner 能够直接访问 SSH 端口的主机名或 IP 地址。使用域名时，应确认它解析到部署主机，并且中间没有只支持 Web 流量的代理。
 
 ## 07. 配置 GitHub Environment
 
@@ -427,29 +427,37 @@ gh api --method PUT \
 | `DEPLOY_USER` | `deploy` | 专用部署用户 |
 | `APP_URL` | `https://app.example.com` | 显示在 GitHub Deployment 中的应用地址 |
 
-再添加以下 Environment Secrets：
+Environment 创建完成后，在保存 `github-actions-deploy` 和 `deploy-known-hosts` 的可信管理终端中上传以下 Environment Secrets。`DEPLOY_SSH_KEY` 必须读取私钥 `github-actions-deploy`，不要误用公钥文件 `github-actions-deploy.pub`：
 
 | 名称 | 内容 |
 | --- | --- |
 | `DEPLOY_SSH_KEY` | `github-actions-deploy` 私钥的完整内容 |
 | `DEPLOY_KNOWN_HOSTS` | 已核对指纹的 `deploy-known-hosts` 完整内容 |
 
-通过 `gh` 写入变量和 Secret；`gh secret set` 会在本地使用 Environment 公钥加密内容后上传：
+以下命令通过 `--repo` 明确指定目标仓库，因此可以直接在保存上述文件的目录中执行。重定向符 `<` 会把文件的完整内容通过标准输入交给 `gh secret set`，无需在终端打印私钥；GitHub CLI 会在本地使用 Environment 公钥加密内容后上传：
 
 ```bash
-gh variable set DEPLOY_HOST --env production --body 192.0.2.10
-gh variable set DEPLOY_PORT --env production --body 22
-gh variable set DEPLOY_USER --env production --body deploy
+gh variable set DEPLOY_HOST --env production \
+  --repo janwee-sha/simple-clock-app --body 192.0.2.10
+gh variable set DEPLOY_PORT --env production \
+  --repo janwee-sha/simple-clock-app --body 22
+gh variable set DEPLOY_USER --env production \
+  --repo janwee-sha/simple-clock-app --body deploy
 gh variable set APP_URL --env production \
-  --body https://app.example.com
+  --repo janwee-sha/simple-clock-app --body https://app.example.com
 
 gh secret set DEPLOY_SSH_KEY --env production \
+  --repo janwee-sha/simple-clock-app \
   < github-actions-deploy
 gh secret set DEPLOY_KNOWN_HOSTS --env production \
+  --repo janwee-sha/simple-clock-app \
   < deploy-known-hosts
+
+gh secret list --env production \
+  --repo janwee-sha/simple-clock-app
 ```
 
-命令默认作用于当前仓库；从其他目录执行时应补上 `--repo OWNER/REPO`。上传成功并验证受限公钥可用后，删除管理终端上的临时私钥副本。
+最后一条命令只会列出 Secret 名称和更新时间，不会显示原始内容。确认 `DEPLOY_SSH_KEY` 和 `DEPLOY_KNOWN_HOSTS` 都已存在后，还可以在仓库网页的 **Settings → Environments → production → Environment secrets** 中核对；也可以在这里点击 **Add environment secret**，以相同名称分别粘贴两个文件的完整内容，完成等价的网页操作。上传成功并验证受限公钥可用后，删除管理终端上的临时私钥副本。
 
 将 Environment 的部署分支限制为 `main`。如果当前仓库和 GitHub 套餐支持 Required reviewers，建议至少在首次发布时要求人工批准：这样可以先确认 GHCR Package 可匿名拉取，再放行生产部署。部署 Job 在保护规则通过前无法读取 Environment Secrets。
 
@@ -612,7 +620,7 @@ gh pr ready
 gh pr merge --squash
 ```
 
-`Test and build` Job 成功后，合并触发 `publish`。首次部署在 reviewer 处暂停时，先按 4.2 节确认 Package 为公开，再通过 API 批准对应 Environment：
+`Test and build` Job 成功后，合并触发 `publish`。首次部署在 reviewer 处暂停时，先按 4.1 节确认 Package 为公开，再通过 API 批准对应 Environment：
 
 ```bash
 RUN_ID="$(gh run list --workflow pipeline.yml \
