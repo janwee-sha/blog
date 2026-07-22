@@ -337,12 +337,6 @@ fi
 exit 1
 ```
 
-为脚本添加执行权限：
-
-```bash
-chmod 750 /opt/simple-clock-app/deploy.sh
-```
-
 脚本只接受固定 GHCR 仓库下的 SHA-256 digest，避免把任意字符串拼接到远程命令中。`.env` 通过临时文件和 `mv` 原子替换；`flock` 则避免手动部署与自动部署同时修改状态。
 
 部署失败时，脚本会打印新容器最后 100 行日志并尝试恢复原镜像。即使回滚成功，它仍返回非零状态，这样 GitHub Actions 不会把一次失败后回滚的发布错误标记为成功。首次部署还没有旧版本，如果新容器不健康，脚本会停止它并等待人工修复。
@@ -365,7 +359,7 @@ echo "Rejected SSH command." >&2
 exit 126
 ```
 
-创建完成后，退出 `deploy` 的登录 shell，返回管理员账户。脚本由 root 持有、`deploy` 组可执行：
+创建完成后，退出 `deploy` 的登录 shell，返回管理员账户，并统一设置两个脚本的所有者和执行权限：
 
 ```bash
 exit
@@ -379,7 +373,7 @@ sudo chmod 750 \
 
 ### 6.2. 配置 SSH 部署密钥
 
-包装脚本就绪后，在可信的管理终端为 GitHub Actions 生成专用部署密钥：
+包装脚本就绪后，为 GitHub Actions 生成专用部署密钥：
 
 ```bash
 ssh-keygen -t ed25519 -N '' \
