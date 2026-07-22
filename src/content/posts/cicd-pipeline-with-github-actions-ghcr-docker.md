@@ -159,11 +159,13 @@ sudo usermod -aG docker deploy
 sudo install -d -o deploy -g deploy -m 0750 /opt/simple-clock-app
 ```
 
-`deploy` 用户需要重新登录后才能获得新的用户组权限。执行以下命令确认环境：
+`deploy` 用户需要重新登录后才能获得新的用户组权限。切换到 `deploy` 的登录 shell，确认环境后返回管理员账户：
 
 ```bash
+sudo -iu deploy
 docker version
 docker compose version
+exit
 ```
 
 > [!WARNING]
@@ -200,12 +202,14 @@ ssh-keygen -lf deploy-known-hosts
 
 GitHub Actions 发布与当前仓库关联的镜像时，可以使用自动生成的 `GITHUB_TOKEN`。这个令牌在每个 Job 开始时由 GitHub 签发，Job 结束后自动失效；下一次运行会得到新令牌，不需要手动更新。
 
-部署主机不在 Actions Job 内，不能复用这个短期令牌。如果镜像是私有的，需要创建一个只包含 `read:packages` 权限的 Personal Access Token（classic），然后以 `deploy` 用户登录 GHCR：
+部署主机不在 Actions Job 内，不能复用这个短期令牌。如果镜像是私有的，需要创建一个只包含 `read:packages` 权限的 Personal Access Token（classic），然后在部署主机切换到 `deploy` 的登录 shell，登录 GHCR 后返回管理员账户：
 
 ```bash
+sudo -iu deploy
 read -r -s -p "GHCR token: " CR_PAT
 printf '%s' "$CR_PAT" | docker login ghcr.io -u janwee-sha --password-stdin
 unset CR_PAT
+exit
 ```
 
 GHCR 的个人访问令牌需要自行轮换。`docker login` 默认可能把凭据保存在用户目录的 Docker 配置中；生产环境应考虑使用 Docker credential helper。如果镜像被设置为公开，则部署主机可以匿名拉取，无需保存这个令牌。
@@ -225,7 +229,14 @@ gh api --method PATCH \
 
 ## 05. 编写 Docker Compose 配置
 
-以 `deploy` 用户登录服务器，在 `/opt/simple-clock-app` 中创建 `compose.yaml`：
+以 `deploy` 用户身份登录 shell 并进入应用目录：
+
+```bash
+sudo -iu deploy
+cd /opt/simple-clock-app
+```
+
+在当前目录创建 `compose.yaml`：
 
 ```yaml title="/opt/simple-clock-app/compose.yaml"
 name: simple-clock-app
@@ -373,9 +384,10 @@ echo "Rejected SSH command." >&2
 exit 126
 ```
 
-脚本由 root 持有、`deploy` 组可执行：
+创建完成后，退出 `deploy` 的登录 shell，返回管理员账户。脚本由 root 持有、`deploy` 组可执行：
 
 ```bash
+exit
 sudo chown root:deploy \
   /opt/simple-clock-app/deploy.sh \
   /opt/simple-clock-app/ssh-deploy-wrapper.sh
@@ -620,14 +632,16 @@ gh api --method POST \
 gh run watch "$RUN_ID" --exit-status
 ```
 
-在部署主机查看状态：
+在部署主机切换到 `deploy` 的登录 shell 后查看状态，完成后返回管理员账户：
 
 ```bash
+sudo -iu deploy
 cd /opt/simple-clock-app
 docker compose ps
 docker compose images
 curl --fail --show-error http://127.0.0.1:7100/
 cat .env
+exit
 ```
 
 `.env` 中应该记录带 digest 的完整镜像引用，而不是 `main` 或 `latest` 标签。也可以在 GitHub 仓库的“Actions”页面查看构建日志，在“Deployments”页面查看生产环境和部署 URL。
@@ -653,11 +667,13 @@ HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=2 \
 
 测试镜像不应覆盖 `main` 标签。验证完毕后删除或清楚标记测试版本，确认 `.env` 和运行中的容器都已恢复到原 digest，再结束维护窗口。
 
-如果需要手动恢复某个已知 digest，可以在部署主机执行：
+如果需要手动恢复某个已知 digest，可以在部署主机切换到 `deploy` 的登录 shell 后执行，完成后返回管理员账户：
 
 ```bash
+sudo -iu deploy
 /opt/simple-clock-app/deploy.sh \
   'ghcr.io/janwee-sha/simple-clock-app@sha256:<64-character-digest>'
+exit
 ```
 
 脚本仍会执行拉取、健康检查和失败回滚，不应直接编辑 `.env` 后跳过验证。
