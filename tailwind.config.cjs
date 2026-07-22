@@ -6,7 +6,19 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["Noto Sans SC Variable", "Roboto", "sans-serif", ...defaultTheme.fontFamily.sans],
+        sans: [
+          "Inter Variable",
+          "PingFang SC",
+          "Microsoft YaHei",
+          ...defaultTheme.fontFamily.sans,
+        ],
+        serif: [
+          "Playfair Display Variable",
+          "Noto Serif SC Variable",
+          "Source Han Serif SC",
+          "Songti SC",
+          ...defaultTheme.fontFamily.serif,
+        ],
       },
     },
   },
