@@ -1,9 +1,9 @@
 ---
-name: blog-formatter
+name: post-reviewer
 description: Interactively review and fix one or all Markdown/MDX posts under src/content/posts in this Astro/Fuwari blog. Use when asked to format, proofread, lint, normalize, or validate blog posts; check Markdown and Astro frontmatter, filename/slug English grammar and meaning, Chinese/English spacing, typos and grammar, consistency, images and links, or publication readiness. Always inspect first, present proposed fixes and judgment-sensitive questions, wait for user feedback, then apply only the approved changes and validate them. Accept scope=all or a slug, filename, or repo-relative path.
 ---
 
-# Blog Formatter
+# Post Reviewer
 
 Review the requested posts against the repository's current rules, agree on the repair set with the user, then make conservative fixes and prove the result with repository checks. Treat source configuration as authoritative and preserve the author's voice.
 

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Post Reviewer"
+  short_description: "交互式检查并修正 Astro 博客文章的格式、语言与链接"
+  default_prompt: "使用 $post-reviewer 检查博客文章；若未指定范围，请先让我从所有文章、最新文章或自行输入中选择。"
