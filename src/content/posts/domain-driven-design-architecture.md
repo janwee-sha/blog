@@ -1,6 +1,6 @@
 ---
 title: "领域驱动设计杂谈（三）：DDD 大厦的梁柱"
-published: 2026-07-19
+published: 2026-07-09
 description: "介绍领域驱动设计在分层架构和六边形架构中的落地方式，以及依赖倒置、端口与适配器如何保护领域模型。"
 image: ""
 tags: ["领域驱动设计"]
@@ -98,80 +98,88 @@ book
 
 根据依赖倒置原则（Dependency Inversion Principle，DIP），高层策略不应该依赖低层实现，二者都应该依赖抽象。对 DDD 来说，领域模型和应用用例属于更高层的策略，数据库、消息系统和第三方接口则属于更容易变化的实现细节。
 
-以发布领域事件为例，应用层可以声明一个出口：
+以调整库存用例为例，`InventoryApplicationService.adjust` 先通过资源库加载库存项，再调用领域行为调整数量，最后保存结果。在持久化这项协作上，应用服务只依赖 `InventoryItemRepository`，并不知道数据最终由哪种数据库或持久化框架保存：
 
 ```java
-package com.example.bookstore.order.application.port.out;
+package com.example.bookstore.book.application.service;
 
-import com.example.bookstore.shared.domain.DomainEvent;
+public class InventoryApplicationService {
+    private final InventoryItemRepository inventoryRepo;
 
-public interface DomainEventPublisher {
-    void publish(DomainEvent event);
-}
-```
+    @Transactional(rollbackFor = Throwable.class)
+    public void adjust(long bookId, AdjustingStockCommand command) {
+        InventoryItem item = inventoryRepo.itemOfBookId(bookId)
+                .orElseThrow(() -> new InventoryNotFoundException(bookId));
 
-应用服务依赖这个接口，而不是依赖某个消息中间件：
-
-```java
-package com.example.bookstore.order.application.service;
-
-import com.example.bookstore.order.application.command.PlaceOrderCommand;
-import com.example.bookstore.order.application.port.out.DomainEventPublisher;
-import com.example.bookstore.order.domain.model.Order;
-import com.example.bookstore.order.domain.model.OrderId;
-import com.example.bookstore.order.domain.repository.OrderRepository;
-
-public class PlaceOrderService {
-    private final OrderRepository orderRepository;
-    private final DomainEventPublisher eventPublisher;
-
-    public PlaceOrderService(
-            OrderRepository orderRepository,
-            DomainEventPublisher eventPublisher
-    ) {
-        this.orderRepository = orderRepository;
-        this.eventPublisher = eventPublisher;
-    }
-
-    public OrderId place(PlaceOrderCommand command) {
-        Order order = Order.place(command.buyerId(), command.items());
-        orderRepository.save(order);
-        order.domainEvents().forEach(eventPublisher::publish);
-        return order.id();
+        item.adjustTo(command.getQuantity());
+        inventoryRepo.update(item);
     }
 }
 ```
 
-基础设施层提供基于 RabbitMQ 的实现：
+`InventoryItemRepository` 接口位于领域层。它使用领域对象表达读写意图，不暴露数据库表、持久化对象或 JPA API：
 
 ```java
-package com.example.bookstore.order.infrastructure.messaging;
+package com.example.bookstore.book.domain.repository;
 
-import com.example.bookstore.order.application.port.out.DomainEventPublisher;
-import com.example.bookstore.shared.domain.DomainEvent;
+import com.example.bookstore.book.domain.model.InventoryItem;
 
-public class RabbitDomainEventPublisher implements DomainEventPublisher {
-    private final MessageClient messageClient;
-    private final DomainEventMessageMapper mapper;
+import java.util.Optional;
 
-    public RabbitDomainEventPublisher(
-            MessageClient messageClient,
-            DomainEventMessageMapper mapper
-    ) {
-        this.messageClient = messageClient;
-        this.mapper = mapper;
+public interface InventoryItemRepository {
+    Optional<InventoryItem> itemOfBookId(Long bookId);
+
+    boolean hasItemOfBookId(Long bookId);
+
+    void add(InventoryItem item);
+
+    void update(InventoryItem item);
+
+    void deleteByBookId(Long bookId);
+}
+```
+
+基础设施层的 `InventoryItemRepositoryJpaAdapter` 反过来实现这个接口。它负责调用 Spring Data JPA，并在持久化对象与领域对象之间转换：
+
+```java
+package com.example.bookstore.book.infrastructure.persistence;
+
+@Repository
+@RequiredArgsConstructor
+public class InventoryItemRepositoryJpaAdapter
+        implements InventoryItemRepository {
+    private final InventoryItemPOJpaRepository jpaRepo;
+
+    @Override
+    public Optional<InventoryItem> itemOfBookId(Long bookId) {
+        return jpaRepo.findByBookId(bookId)
+                .map(InventoryItemPOAssembler::toDomain);
     }
 
     @Override
-    public void publish(DomainEvent event) {
-        messageClient.publish(mapper.toMessage(event));
+    public void update(InventoryItem item) {
+        Assert.notNull(item, "InventoryItem is required");
+        Long id = item.id();
+        Assert.notNull(id, "Existing inventory item ID is required for update");
+        Assert.isTrue(
+                jpaRepo.existsById(id),
+                "Existing inventory item must be present before update"
+        );
+        jpaRepo.save(InventoryItemPOAssembler.toPO(item));
     }
 }
 ```
 
-源码依赖由 `RabbitDomainEventPublisher` 指向应用层定义的 `DomainEventPublisher`，而不是相反。以后改用 Kafka 或进程内事件总线，只需要提供另一个实现，应用用例和领域模型无需知道替换过程。
+这条链路有两种方向：
 
-上面的示例省略了事务与消息一致性问题。生产系统通常还需要事务发件箱等机制，避免数据库提交成功而消息发布失败。架构隔离并不会自动解决分布式一致性，但它能让这些技术策略留在适当的边界中。
+- 运行时调用方向是 `InventoryApplicationService → InventoryItemRepository → InventoryItemRepositoryJpaAdapter → InventoryItemPOJpaRepository → 数据库`。
+- 源码依赖方向是 `InventoryApplicationService → InventoryItemRepository ← InventoryItemRepositoryJpaAdapter`。
+
+应用服务在运行时调用基础设施实现，但源码中没有导入 `InventoryItemRepositoryJpaAdapter`、`InventoryItemPO` 或 Spring Data JPA API。相反，JPA 适配器依赖领域层声明的 `InventoryItemRepository`。Spring 在系统边界完成接口与实现的组装，这正是“倒置”的含义。
+
+这种结构也让应用用例更容易测试。`InventoryApplicationServiceUnitTest` 可以用 Mock 替代 `InventoryItemRepository`，直接验证库存数量发生变化并调用了更新操作，无需启动数据库。以后改用 JDBC、MongoDB 或内存存储时，只需要提供新的适配器并调整组装配置，应用用例和领域模型无需了解替换过程。
+
+依赖倒置并不会消除持久化本身的复杂度。事务边界、并发更新、对象映射和数据库约束仍然需要明确设计，但它们可以被限制在应用层与基础设施层的适当位置，不必侵入库存领域模型。
 
 ## 05. 六边形架构：端口与适配器
 
