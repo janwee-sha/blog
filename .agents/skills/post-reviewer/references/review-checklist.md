@@ -1,26 +1,26 @@
-# Required review checklist
+# Required Review Checklist
 
-Apply every section to each selected post during the inspection phase. Use the repository's current schema, plugins, scripts, and established conventions as the source of truth. Do not edit until the user has reviewed the proposed repair set and responded.
+在检查阶段对每篇选中的文章执行所有章节。以仓库当前 schema、plugins、scripts 与既有约定为准。在用户审阅修复建议集并回复之前，不得编辑。
 
 ## 1. Standard Markdown
 
-- Require a well-formed opening YAML frontmatter block and a final newline.
-- Check ATX heading syntax, hierarchy without unexplained level jumps, unique headings, and consistent numbering. Remember that the page template may already render the frontmatter title as the page H1.
-- Check blank lines around headings, lists, block quotes, tables, and fenced code where Markdown parsing depends on them.
-- Check list indentation, ordered-list continuity when meaningful, task-list syntax, and consistent marker/spacing style within the post.
-- Balance backtick and tilde fences. Use a valid language identifier when known, and preserve Expressive Code metadata.
-- Check emphasis, escaping, nested delimiters, inline code, block quotes, tables, and link/image syntax for accidental breakage.
-- Flag trailing whitespace, tabs in prose, non-breaking spaces, repeated blank lines, merge markers, and accidental raw HTML.
-- Preserve an intentional two-space hard break unless a normal paragraph break is clearly intended.
+- 要求开头有格式正确的 YAML frontmatter 块，文件末尾有换行。
+- 检查 ATX heading 语法、无不明层级跳跃的标题层级、标题唯一性与编号一致性。注意 page template 可能已将 frontmatter `title` 渲染为 page H1。
+- 检查 headings、lists、block quotes、tables 与 fenced code 周围会影响 Markdown 解析的空行。
+- 检查列表缩进、在有意义时保持 ordered list 连续、task list 语法，以及文章内部标记与空格风格一致。
+- 确保 backtick 与 tilde fences 成对。已知时使用有效的 language identifier，并保留 Expressive Code metadata。
+- 检查强调、转义、嵌套分隔符、inline code、block quotes、tables 与 link/image 语法是否意外损坏。
+- 标记 trailing whitespace、正文中的 tab、non-breaking spaces、重复空行、merge markers 与意外 raw HTML。
+- 保留有意使用的双空格 hard break，除非显然应改为普通段落分隔。
 
-## 2. Canonical article structure
+## 2. Canonical Article Structure
 
-Treat the following structure, extracted from `src/content/posts/domain-driven-design.md`, as the repository's normative post format. Report deviations even when Markdown would still render successfully.
+将以下从 `src/content/posts/domain-driven-design.md` 提取的结构视为仓库规范文章格式。即使 Markdown 仍可成功渲染，也要报告偏差。
 
-### 2.1. Opening classical epigraph
+### 2.1. Opening Classical Epigraph
 
-- Place one thematically relevant classical Chinese quotation immediately after the closing frontmatter delimiter and before the first chapter. Do not add a heading for it.
-- Use one block quote for the quotation and its source, with a blank quoted line between them:
+- 在 frontmatter 结束分隔符之后、第一章之前，紧接一则与主题相关的中国古典引文。不要为它添加 heading。
+- 使用同一个 block quote 容纳引文与出处，并在二者之间放一个空白引用行：
 
   ```markdown
   > 名无固宜，约之以命
@@ -28,71 +28,71 @@ Treat the following structure, extracted from `src/content/posts/domain-driven-d
   > ——《荀子·正名》
   ```
 
-- Format the attribution as `——《典籍·篇名》`; use an em dash pair without surrounding spaces. Verify the wording and source. Never invent or silently replace a quotation or attribution.
-- Treat malformed markup around an already verified quotation as a definite repair. Treat a missing quotation, uncertain wording, uncertain source, or proposed replacement as needing user review.
+- 将出处写为 `——《典籍·篇名》`；使用一对 em dash，前后不加空格。核实引文文字与出处。不得虚构或静默替换引文或出处。
+- 已核实引文周围的 markup 损坏时，将其归为 **Definite repairs（确定性修复）**。引文缺失、文字不确定、出处不确定或建议替换时，将其归为 **Needs user review（需用户复核）**。
 
-### 2.2. Chapter organization
+### 2.2. Chapter Organization
 
-- Do not add an H1 in the body; the page template renders the frontmatter title as the page H1.
-- Start the body with a numbered H2 in the form `## 01. 标题`. Allow any meaningful title text after `01.`; do not require a fixed title such as `引言`. Number subsequent H2 chapters consecutively with two-digit Arabic numerals and the same `## NN. 标题` form.
-- Organize subdivisions as H3 headings in the form `### N.M. 标题`. Use the integer value of the parent chapter without a leading zero, restart `M` at `1` within each parent, and keep it consecutive.
-- Keep the body hierarchy primarily at H2 and H3. Introduce deeper levels only when the content genuinely requires them and flag the departure for user review.
-- Reserve the final unnumbered H2 heading `## 引用` for source entries. Exclude it from chapter numbering and do not place another chapter after it.
-- Treat number-only repairs as definite only when they preserve existing heading text and anchors are not externally relied upon. Otherwise treat heading renames, insertions, removals, or renumbering as needing user review because generated anchors can change.
+- 不要在正文中添加 H1；page template 会把 frontmatter `title` 渲染为 page H1。
+- 以 `## 01. 标题` 形式的编号 H2 开始正文。允许 `01.` 后使用任何有意义的标题，不要求固定为 `引言`。后续 H2 章节使用两位阿拉伯数字，并按同一 `## NN. 标题` 格式连续编号。
+- 使用 `### N.M. 标题` 形式的 H3 headings 组织子节。父章节编号使用不带前导零的整数值；每个父章节中的 `M` 从 `1` 重新开始并保持连续。
+- 正文层级主要使用 H2 与 H3。仅在内容确实需要时引入更深层级，并将偏离项标记为需用户复核。
+- 将最后一个无编号 H2 heading `## 引用` 保留给来源条目。它不计入章节编号，之后不得再放其他章节。
+- 只有在保留现有标题文本且 anchors 未被外部依赖时，才将纯编号修复归为确定性修复。其他标题重命名、插入、删除或重新编号应归为需用户复核，因为生成的 anchors 可能改变。
 
-### 2.3. Reference entries
+### 2.3. Reference Entries
 
-- When the post uses books, articles, documentation, or other external material, end with `## 引用`, followed by one ordered-list entry per source in a stable, meaningful order.
-- Use two spaces after each ordered-list marker, matching `1.  条目`, and number entries consecutively from `1`.
-- Format books as `《书名》（作者 著，出版社）`. Join multiple authors with `、`, keep `著` after the author list, and omit terminal punctuation.
-- Keep non-book sources in the same ordered list and include enough identifying information to locate them. Do not fabricate book-style fields for sources that are not books.
-- Keep every entry self-contained on one line. Treat spacing, numbering, and punctuation normalization as definite repairs when the source identity is already clear; treat missing or uncertain author, title, publisher, URL, or source identity as needing user review.
+- 当文章使用书籍、文章、文档或其他外部材料时，以 `## 引用` 结束文章，并按稳定且有意义的顺序为每个来源添加一个 ordered list 条目。
+- 每个 ordered list marker 后使用两个空格，格式为 `1.  条目`，并从 `1` 开始连续编号。
+- 书籍使用 `《书名》（作者 著，出版社）` 格式。多个作者以 `、` 连接，作者列表后保留 `著`，末尾不加标点。
+- 非书籍来源保留在同一个 ordered list 中，并提供足以定位来源的信息。不得为非书籍来源虚构书籍格式字段。
+- 每个条目必须在一行内自包含。来源身份明确时，将空格、编号与标点规范化归为确定性修复；作者、标题、出版社、URL 或来源身份缺失或不确定时，归为需用户复核。
 
-## 3. Astro and repository conventions
+## 3. Astro and Repository Conventions
 
-- Read `src/content/config.ts` and validate fields against the current posts collection schema.
-- Reconcile the schema with `README.md`, the post generator, and validation scripts. A field can be schema-optional yet required by repository publication policy.
-- Check YAML types, duplicate keys, quoting, ISO dates, booleans, arrays, and unknown keys. Keep `published` and `updated` chronologically plausible; do not change dates without evidence.
-- Derive the slug from the selected post's path as documented by `README.md`: for `src/content/posts/<slug>.md`, inspect the `<slug>` filename stem.
-- Require lowercase ASCII kebab-case for the slug. Preserve official spellings and conventional forms of product names, acronyms, and technical terms when converting them to URL-safe words.
-- Compare the English slug with the frontmatter title, description, and article's central topic. Check English grammar, word choice, singular/plural forms, parts of speech, prepositions, and natural word order.
-- Prefer a concise, idiomatic English rendering that preserves the distinguishing meaning of the Chinese title. Do not require word-for-word translation, but flag mistranslations, awkward machine translation, ambiguity, omitted core concepts, and unsupported specificity.
-- Treat every proposed slug correction as needing user review because the filename determines the published route. Present the current and proposed slug with the reason and URL/link impact; never rename it as a definite repair.
-- Check `draft` state, language tag, category, tags, description, and cover image for internal consistency.
-- Keep the description useful, grammatical, non-truncated, and representative of the article. Avoid copying navigation text or an arbitrary slice of the body.
-- Preserve supported repository extensions: math, directives, GitHub-style admonitions, custom components, and Expressive Code annotations.
-- Run Astro/content/build checks rather than assuming parse validity from visual inspection.
+- 读取 `src/content/config.ts`，按当前 posts collection schema 验证字段。
+- 将 schema 与 `README.md`、文章生成器和验证脚本对照。字段可能在 schema 中可选，但被仓库发布策略要求必填。
+- 检查 YAML 类型、duplicate keys、引号、ISO 日期、booleans、arrays 与 unknown keys。确保 `published` 和 `updated` 的时间关系合理；没有证据时不得改动日期。
+- 按 `README.md` 的说明，从所选文章路径派生 slug：对于 `src/content/posts/<slug>.md`，检查 `<slug>` 文件名 stem。
+- 要求 slug 使用 lowercase ASCII kebab-case。将产品名、acronyms 与技术术语转换为 URL-safe words 时，保留官方拼写与惯用形式。
+- 将英文 slug 与 frontmatter `title`、`description` 和文章中心主题比较。检查英文语法、词语选择、单复数、词性、介词与自然语序。
+- 优先采用简洁、地道且保留中文标题区分性含义的英文表达。不要求逐字翻译，但要标记误译、生硬的机器翻译、歧义、遗漏核心概念与无依据的过度具体化。
+- 每个 slug 修正建议都归为需用户复核，因为文件名决定发布 route。展示当前 slug 与拟议 slug、理由及 URL/link 影响；不得将重命名归为确定性修复。
+- 检查 `draft` 状态、language tag、category、tags、description 与 cover image 的内部一致性。
+- 保持 `description` 有用、语法正确、未截断，并能代表文章内容。避免复制导航文字或正文的任意片段。
+- 保留仓库支持的扩展：math、directives、GitHub-style admonitions、custom components 与 Expressive Code annotations。
+- 运行 Astro/content/build checks，不得仅凭目视检查假定解析有效。
 
-## 4. Chinese copy editing and mixed-language spacing
+## 4. Chinese Copy Editing and Mixed-Language Spacing
 
-- Correct clear typos, duplicated or missing words, malformed sentences, incorrect particles, punctuation, and subject–predicate or modifier ambiguity.
-- Add one normal-width space between Chinese text and adjacent Latin words, acronyms, or Arabic numerals in prose, for example `使用 Java 编写` and `MySQL 8.0 引入`.
-- Do not add spaces inside product names, identifiers, versions, URLs, paths, commands, code, or quoted literal output.
-- Prefer Chinese full-width punctuation in Chinese sentences and English punctuation in English sentences. Remove stray spaces before Chinese punctuation.
-- Check paired punctuation and quotes, especially `（）`, `“”`, `「」`, backticks, and parentheses containing English terms.
-- Preserve the author's register. Fix grammar without turning the post into generic marketing copy.
+- 修正明确的错别字、词语重复或缺失、病句、助词误用、标点问题，以及主谓或修饰关系歧义。
+- 在正文中的中文与相邻拉丁文字、acronyms 或阿拉伯数字之间添加一个半角空格，例如 `使用 Java 编写` 与 `MySQL 8.0 引入`。
+- 不要在产品名、identifiers、versions、URLs、paths、commands、code 或被引用的 literal output 内添加空格。
+- 中文句子优先使用中文全角标点，英文句子使用英文标点。删除中文标点前的多余空格。
+- 检查成对标点与引号，特别是 `（）`、`“”`、`「」`、backticks，以及包含英文术语的圆括号。
+- 保留作者语体。修正语法，但不要把文章改成泛化的营销文案。
 
 ## 5. Consistency
 
-- Normalize capitalization and spelling of the same technology within the selected post, such as `GitHub`, `Java`, `JavaScript`, `MySQL`, `RabbitMQ`, and `Nginx`, while respecting official branding.
-- Use one term for one concept unless a synonym is introduced deliberately. Check translations, abbreviations, singular/plural forms, and acronym expansion on first use.
-- Keep heading numbering, list punctuation, code-fence labels, reference-list style, emphasis, and image-caption style internally consistent.
-- Compare frontmatter wording and formatting with nearby posts only to discover conventions. Do not mass-normalize outside the selected scope.
+- 在所选文章内统一同一技术的大小写与拼写，例如 `GitHub`、`Java`、`JavaScript`、`MySQL`、`RabbitMQ` 与 `Nginx`，同时遵循官方品牌写法。
+- 同一概念使用同一术语，除非有意引入同义词。检查翻译、abbreviations、单复数，以及 acronym 首次出现时的展开。
+- 保持标题编号、列表标点、code-fence labels、引用列表风格、emphasis 与图片说明风格内部一致。
+- 仅为发现约定而比较相邻文章的 frontmatter 措辞与格式。不得在所选 scope 外批量规范化。
 
-## 6. Links and media
+## 6. Links and Media
 
-- Validate Markdown links, autolinks, HTML `href`/`src`, reference definitions, frontmatter images, and image sources used by custom syntax.
-- Resolve root-relative media against `public/`. Resolve source-relative imports and media against the post location and repository rules. Reject paths that escape the repository.
-- Decode percent-encoded paths for existence checks and ignore query strings/fragments when checking local files.
-- Verify same-page fragments against generated heading IDs when practical. Use a build/site check for internal routes and generated pages.
-- For external links, follow the status rules in `SKILL.md`. Record redirects that land on an unrelated page, parked domain, login wall, or generic home page.
-- Require meaningful image alt text unless the image is intentionally decorative. Check that image claims, captions, dimensions, and formats are sensible.
-- Do not classify example URLs such as `http://<your_ip>:8080` inside prose or code as broken production links.
+- 验证 Markdown links、autolinks、HTML `href`/`src`、reference definitions、frontmatter 图片，以及 custom syntax 使用的图片来源。
+- 以 `public/` 为基准解析 root-relative media。按文章位置与仓库规则解析 source-relative imports 与 media。拒绝逃逸仓库的路径。
+- 检查路径是否存在前先解码 percent-encoded paths；检查本地文件时忽略 query strings/fragments。
+- 可行时，根据生成的 heading IDs 验证 same-page fragments。对内部 routes 与生成页面使用 build/site check。
+- 对外部链接，遵循 `SKILL.md` 中的状态规则。记录最终落到无关页面、parked domain、login wall 或通用首页的 redirects。
+- 除非图片有意作为装饰，否则要求有意义的 image alt text。检查图片说明、captions、dimensions 与 formats 是否合理。
+- 不要将正文或 code 中的 `http://<your_ip>:8080` 等 example URLs 归类为失效的 production links。
 
-## 7. Technical and editorial safety
+## 7. Technical and Editorial Safety
 
-- Check obvious factual self-contradictions, stale cross-references, duplicate headings/paragraphs, undefined abbreviations, and references never cited in the article.
-- Check code block language labels and visible syntax, but do not refactor or “fix” runnable code without enough context and authorization.
-- Preserve warnings, limitations, attribution, quotations, and license-sensitive text.
-- Flag secrets, tokens, private hosts, personal data, and unsafe commands if present; do not repeat sensitive values in the report.
-- Distinguish definite errors, likely improvements, and subjective suggestions. After the user responds, apply only the approved definite repairs and selected judgment-sensitive changes.
+- 检查明显的事实自相矛盾、过时的 cross-references、重复 headings/paragraphs、未定义 abbreviations，以及文中从未引用的 references。
+- 检查 code block language labels 与可见语法，但没有足够上下文和授权时，不得重构或“修复”可运行代码。
+- 保留警告、限制、出处、引文与 license-sensitive text。
+- 若发现 secrets、tokens、private hosts、personal data 或 unsafe commands，进行标记；报告中不得重复敏感值。
+- 区分明确错误、可能改进与主观建议。用户回复后，仅应用获批的确定性修复与选中的需判断改动。

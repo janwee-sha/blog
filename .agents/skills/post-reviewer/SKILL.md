@@ -1,91 +1,91 @@
 ---
 name: post-reviewer
-description: Interactively review and fix one or all Markdown/MDX posts under src/content/posts in this Astro/Fuwari blog. Use when asked to format, proofread, lint, normalize, or validate blog posts; check Markdown and Astro frontmatter, filename/slug English grammar and meaning, Chinese/English spacing, typos and grammar, consistency, images and links, or publication readiness. Always inspect first, present proposed fixes and judgment-sensitive questions, wait for user feedback, then apply only the approved changes and validate them. Accept scope=all or a slug, filename, or repo-relative path.
+description: 交互式审阅并修复此 Astro/Fuwari 博客中 src/content/posts 下的一篇或全部 Markdown/MDX 文章。当用户要求 review/审阅、format/格式化、proofread/校对、lint/检查、normalize/规范化或 validate/验证博客文章时使用；覆盖 Markdown 与 Astro frontmatter、文件名/slug 的英文语法和语义、中英文间距、错别字与语法、一致性、图片与链接以及 publication readiness/发布就绪度。始终先检查并展示修复建议和需判断的问题，等待用户反馈后仅应用获批改动，再执行验证。接受 scope=all，或 slug、文件名、仓库相对路径。
 ---
 
 # Post Reviewer
 
-Review the requested posts against the repository's current rules, agree on the repair set with the user, then make conservative fixes and prove the result with repository checks. Treat source configuration as authoritative and preserve the author's voice.
+依据仓库当前规则审阅指定文章，与用户确认修复集合后再保守修改，并通过仓库检查验证结果。以源码配置为准，保留作者的表达风格。
 
 ## Input
 
-Interpret the prompt-level `scope` input:
+按以下方式解释提示词级别的 `scope` 输入：
 
-- `scope=all`: select every `.md` and `.mdx` file recursively under `src/content/posts/`.
-- `scope=<slug|filename|repo-relative-path>`: select exactly one post. Accept values such as `langextract`, `langextract.md`, or `src/content/posts/langextract.md`.
+- `scope=all`：递归选择 `src/content/posts/` 下的所有 `.md` 与 `.mdx` 文件。
+- `scope=<slug|filename|repo-relative-path>`：只选择一篇文章。如：`langextract`、`langextract.md` 或 `src/content/posts/langextract.md` 等值。
 
-If the prompt clearly names one post, infer that single-post scope. If it explicitly says all posts, infer `all`. Otherwise collect the scope with this selection workflow; never silently expand an ambiguous request to all posts:
+若提示词明确指出一篇文章，则推断为单篇范围；若明确指出全部文章，则推断为 `all`。否则按以下选择流程收集范围；不得将含糊请求静默扩展为全部文章：
 
-1. Find the repository root, then get the one most recently published post with the read-only helper. The helper orders posts by the frontmatter `published` date, not filesystem timestamps, and returns a usable scope value:
+1. 找到仓库根目录，再用只读辅助脚本获取最近发布的一篇文章。脚本按 frontmatter 的 `published` 日期而非文件系统时间戳排序，并返回可直接使用的 `scope` 值：
 
    ```bash
    python3 <skill-dir>/scripts/audit_posts.py --root <repo-root> --recent 1 --format json
    ```
 
-2. When an interactive input tool with fixed choices and a built-in free-form choice is available, show these user-facing choices:
-   - the returned post scope, such as `langextract` (recommend this choice and describe it with the title and publication date);
-   - `所有文章` (map it to `scope=all`);
-   - the tool's built-in free-form choice, presented as `自行输入`, where the user can enter a slug, filename, or repository-relative path.
-3. Pass only the latest-post and `所有文章` choices as fixed options. Do not create `自行输入` as a fixed option: use the tool's native free-form option so selecting it opens an input field. List only one concrete post by default.
-4. If no such interactive tool is available, ask one concise plain-text question with `所有文章`, the latest post scope, and `自行输入（请回复 slug、文件名或仓库相对路径）` as the three choices.
+2. 若有同时支持固定选项和内置自由输入的交互工具，显示以下用户可见选项：
+   - 辅助脚本返回的文章 `scope`，例如 `langextract`；推荐此项，并用标题与发布日期说明；
+   - `所有文章`，映射为 `scope=all`；
+   - 工具内置的自由输入项，显示为 `自行输入`，允许用户输入 slug、文件名或仓库相对路径。
+3. 固定选项只传入最近文章与 `所有文章`。不得把 `自行输入` 创建为固定选项；使用工具原生的自由输入项，使用户选择后能打开输入框。默认只列出一篇具体文章。
+4. 若无此类交互工具，用一个简短的纯文本问题提供三个选择：`所有文章`、最近文章的 scope、`自行输入（请回复 slug、文件名或仓库相对路径）`。
 
-Resolve the label dynamically on every ambiguous invocation. Do not hard-code `langextract`; it is only the expected label while that post remains the newest by `published`.
+每次遇到含糊调用时动态解析标签。
 
-Do not accept or invent `check` and `fix` modes. Use the required phased workflow every time.
+不得接受或虚构 `check` 与 `fix` 模式。每次都使用下述强制分阶段流程。
 
-## Required phase gate
+## Required Phase Gate
 
-Treat the initial invocation as authorization to inspect, not to edit. Never modify a post, run a formatter in write mode, or apply an automated fix before presenting the findings and receiving the user's feedback. Do not interpret silence as approval.
+将首次调用视为检查授权，而非编辑授权。在展示发现并收到用户反馈之前，不得修改文章、以写入模式运行格式化工具，或应用自动修复。不得将沉默视为批准。
 
-Require at least one confirmation before applying any proposed changes. Ask targeted questions for judgment-sensitive items. If the inspection finds no actionable issues, report that the scope is clean and stop without asking for a meaningless approval.
+实施任何建议改动前，至少取得一次确认。针对需判断的项目提出定向问题。若检查未发现可执行问题，报告该范围无问题并停止，不要请求无意义的批准。
 
 ## Phase 1: Inspect
 
-1. Find the repository root with `git rev-parse --show-toplevel`. Require `src/content/posts/` to exist and record the initial `git status --short` output.
-2. Read the repository-level `AGENTS.md`, `README.md`, `package.json`, Astro config, content collection schema, and content-validation scripts that govern the selected posts. Prefer current repository rules over examples bundled with this skill.
-3. Read [references/review-checklist.md](references/review-checklist.md) completely before reviewing content.
-4. Resolve and baseline the scope with the read-only preflight:
+1. 使用 `git rev-parse --show-toplevel` 找到仓库根目录。确认 `src/content/posts/` 存在，并记录初始 `git status --short` 输出。
+2. 读取约束所选文章的仓库级 `AGENTS.md`、`README.md`、`package.json`、Astro 配置、content collection schema 与内容验证脚本。优先采用仓库当前规则，而非技能内置示例。
+3. 审阅内容前，完整读取 [references/review-checklist.md](references/review-checklist.md)。
+4. 使用只读预检解析范围并建立基线：
 
    ```bash
    python3 <skill-dir>/scripts/audit_posts.py --root <repo-root> --scope <scope> --format json
    ```
 
-   Treat the script as a deterministic preflight, not as a complete editorial review. Refuse paths outside `src/content/posts/`, missing posts, and ambiguous slugs.
-5. Read every selected post completely. Inspect the whole file when judging terminology, heading structure, numbering, punctuation, consistency, and whether the filename slug is grammatical English that accurately conveys the title and central topic; do not infer meaning from an excerpt.
-6. Check every category in the required checklist, including the canonical epigraph, numbered-chapter hierarchy, and reference-list structure extracted from `domain-driven-design.md`. Treat those structural conventions as repository publication rules, not optional examples, but allow the first chapter to use any meaningful title after `## 01.` instead of requiring `引言`. Validate local links and deduplicated external links during this phase. Do not edit while checking.
-7. Build a proposed repair set with exact file and line locations, the current text or condition, the recommended change, and the reason. For a slug finding, cite the current file path and the frontmatter title line.
+   将此脚本视为确定性预检，而非完整的编辑审阅。拒绝 `src/content/posts/` 之外的路径、不存在的文章与有歧义的 slug。
+5. 完整读取每篇选中的文章。判断术语、标题结构、编号、标点、一致性，以及文件名 slug 的英文语法和其是否准确表达标题与中心主题时，检查整个文件；不得根据片段推断语义。
+6. 检查必检清单的所有类别，包括从 `domain-driven-design.md` 提取的标准开篇引文、编号章节层级与引用列表结构。将这些结构约定视为仓库发布规则，而非可选示例；首章只需在 `## 01.` 后使用有意义的标题，不强制使用 `引言`。在此阶段验证本地链接和去重后的外部链接。检查期间不得编辑。
+7. 建立修复建议集，包含准确文件与行号、当前文本或状态、建议改动及理由。若发现 slug 问题，引用当前文件路径与 frontmatter 标题所在行。
 
 ## Phase 2: Review with the user
 
-Classify findings before asking for feedback:
+请求反馈前，将发现分类：
 
-- **Definite repairs**: clear, meaning-preserving defects such as malformed Markdown, missing resources, obvious typos, accidental NBSP characters, or unambiguous Chinese/English spacing. Group repetitive instances and ask for one approval for the group.
-- **Needs user review**: wording or tone changes, multiple valid corrections, title/description/frontmatter changes, filename or slug changes, heading-anchor changes, a missing or inaccurate opening epigraph, missing bibliographic metadata, fact or API updates, runnable-code changes, link replacements, publication dates, or anything that could alter meaning. Show the recommended option and concise alternatives or tradeoffs.
-- **Suggestions only**: subjective improvements that are not errors. Keep them out of the repair set by default; offer them separately without assuming approval.
+- **Definite repairs（确定性修复）**：明确且不改变语义的缺陷，例如 Markdown 损坏、资源缺失、明显错别字、意外 NBSP 字符或无歧义的中英文间距问题。合并重复实例，对整组请求一次批准。
+- **Needs user review（需用户复核）**：措辞或语气调整、存在多个有效修法、`title`/`description`/frontmatter 改动、文件名或 slug 改动、标题锚点改动、缺失或不准确的开篇引文、缺失的书目信息、事实或 API 更新、可运行代码改动、链接替换、发布日期，以及任何可能改变语义的内容。展示推荐选项与简短的替代方案或取舍。
+- **Suggestions only（仅建议）**：并非错误的主观改进。默认不纳入修复集；单独提供，不假定用户批准。
 
-Present a compact repair plan before any edits. Include enough before/after text for the user to judge the change. Ask no more than three focused questions at a time; group repeated decisions by rule rather than asking per occurrence. Use an interactive input tool when available, otherwise ask concise plain-text questions.
+任何编辑前先展示紧凑的修复计划。提供足够的修改前后文本，便于用户判断改动。每次最多提出三个聚焦问题；按规则合并重复决策，不要逐项询问。若有交互输入工具则使用，否则提出简短的纯文本问题。
 
-Always pause after presenting the plan. Do not apply fixes in the same turn. A useful approval question is: “是否应用上述确定性修复，并按推荐方案处理待复核项？”
+展示计划后始终暂停，不得在同一轮应用修复。可使用以下批准问题：“是否应用上述确定性修复，并按推荐方案处理待复核项？”
 
 ## Phase 3: Incorporate feedback
 
-Treat the user's reply as a continuation of the existing review. Do not restart from Phase 1 unless the scope changed, relevant files changed, or the reply requests another inspection.
+将用户回复视为现有审阅的延续。除非 `scope` 已变、相关文件已变，或回复要求重新检查，否则不得从 Phase 1 重启。
 
-Map the reply to each proposed group or decision:
+将回复映射到每个建议组或决策：
 
-- Apply approved definite repairs and selected alternatives.
-- Leave rejected or deferred items unchanged.
-- Interpret “全部按推荐方案” as approval of definite repairs and explicitly recommended review items, not suggestions-only items.
-- Ask a follow-up question when feedback is ambiguous or does not resolve a meaning-sensitive decision. Continue to pause; do not partially edit while required decisions remain unresolved unless the user explicitly approves an independent subset.
+- 应用已获批准的确定性修复与选中的替代方案。
+- 对已拒绝或暂缓的项目保持不变。
+- 将“全部按推荐方案”解释为批准确定性修复与明确推荐的待复核项，不包括仅建议项。
+- 若反馈含糊或未解决语义敏感决策，提出后续问题并继续暂停。只要必需决策仍未解决，就不得部分编辑；用户明确批准独立子集时除外。
 
-Before editing after a delayed reply, verify that the selected files still match the inspected state. If they changed, explain what changed and re-inspect the affected parts.
+收到延迟回复后，在编辑前验证所选文件仍与已检查状态一致。若文件已变，说明变化并重新检查受影响部分。
 
 ## Phase 4: Fix and validate
 
-1. Apply the smallest patch that implements the approved repair set. Preserve technical meaning, Markdown extensions, code behavior, URLs, heading anchors, and authorial tone except where the user approved a change.
-2. Do not apply rejected suggestions, unreviewed meaning-sensitive changes, or changes outside the selected scope.
-3. Re-run `audit_posts.py` on the same scope. Fix remaining diagnostics only when they fall within an approved category. If a new judgment-sensitive issue appears, return to Phase 2 for that issue before changing it.
-4. Run the validation commands documented by the repository. For this repository, use the full publication checks from `README.md` when available:
+1. 应用能够实现获批修复集的最小 patch。除用户批准改动的部分外，保留技术语义、Markdown 扩展、代码行为、URL、标题锚点与作者语气。
+2. 不得实施已拒绝的建议、未经复核的语义敏感改动，或所选 `scope` 之外的改动。
+3. 对同一 `scope` 重新运行 `audit_posts.py`。仅当剩余诊断项属于已批准类别时才修复。若出现新的需判断问题，先针对该问题返回 Phase 2，再进行改动。
+4. 运行仓库文档规定的验证命令。对本仓库，在可用时执行 `README.md` 中完整的发布检查：
 
    ```bash
    pnpm content:verify
@@ -95,35 +95,39 @@ Before editing after a delayed reply, verify that the selected files still match
    pnpm check:site
    ```
 
-   If a command cannot run because dependencies, network access, or environment requirements are unavailable, report the exact command and blocker. Do not claim validation passed.
-5. Inspect the final diff. Ensure only selected posts changed unless the user explicitly approved another artifact, and preserve unrelated pre-existing changes.
+   若命令因依赖、网络访问或环境要求不可用而无法运行，报告准确命令与阻塞原因。不得声称验证已通过。
+5. 检查最终 diff。除非用户明确批准其他文件，否则确保仅所选文章发生变化，并保留无关的既有改动。
 
-## Link validation
+## Link Validation
 
-Always validate local images and links. For external HTTP(S) links, deduplicate URLs and check the final destination using available web access or an HTTP client. Follow redirects; if `HEAD` is rejected, retry with a small `GET`. Treat `2xx` as valid and a stable `404`/`410` as broken. Treat `401`, `403`, `429`, timeouts, TLS failures, bot challenges, and transient `5xx` responses as inconclusive unless an independent check proves the target is gone.
+始终验证本地图片与链接。对外部 HTTP(S) 链接，先对 URL 去重，再用可用的网络访问工具或 HTTP 客户端检查最终目标。跟随重定向；若 `HEAD` 被拒绝，改用小型 `GET` 重试。将 `2xx` 视为有效，将稳定的 `404`/`410` 视为失效。对于 `401`、`403`、`429`、超时、TLS 失败、bot challenge 与瞬时 `5xx`，除非独立检查证明目标已消失，否则标记为 **Inconclusive（结论不确定）**。
 
-Never propose replacing or removing an external link solely because an automated request is inconclusive. For a replacement, show the proposed destination during Phase 2, verify that it supports the same claim, and prefer an official source.
+不得仅因自动请求结论不确定就建议替换或删除外部链接。若要替换，在 Phase 2 展示拟替换目标，验证其支持相同论断，并优先采用官方来源。
 
-## Editing guardrails
+## Editing Guardrails
 
-- Exclude fenced code, inline code, commands, URLs, file paths, identifiers, and quoted literal output from prose-only normalization unless they are themselves wrong.
-- Add Chinese/English boundary spaces in prose, but preserve established product names and syntax. Use punctuation appropriate to the surrounding language.
-- Preserve intentional hard line breaks, tables, math, directives, admonitions, raw HTML, and Expressive Code metadata.
-- Do not invent a classical quotation, its source, or bibliographic metadata to satisfy the canonical structure. Ask the user to provide or approve meaning-sensitive content, and verify attribution before inserting it.
-- Write the publishable end-state, not an operations log of how the draft was repaired. When fixing a runnable sequence, remove superseded steps and present the corrected command at the point where readers execute it. Counterexample: `部署脚本暂不执行；6.1 节创建包装脚本后，会返回管理员账户，统一设置两个脚本的所有者和执行权限。` This records deferral and repair rationale instead of the procedure. Prefer deleting the redundant `chmod`, then writing at the actual permission step: ``创建完成后，退出 `deploy` 的登录 shell，返回管理员账户，并统一设置两个脚本的所有者和执行权限：``. Keep failure history, workaround narration, and repair rationale only when the author explicitly wants them as instructional content.
-- Treat every slug rename as a public URL change. Never rename a post automatically; show the current and proposed slug, explain the grammatical or semantic issue, note link and SEO impact, and wait for explicit approval. After an approved rename, update affected internal links and repository-supported redirects within the approved scope, then validate the generated route.
-- Do not change publication dates, facts, API names, version numbers, or runnable examples without explicit item-level approval.
-- Do not update `updated` automatically unless the user approves it or the repository convention requires it.
-- Do not touch unselected posts to create global consistency. Report cross-scope inconsistencies instead.
+- 对仅适用于正文的规范化，排除 fenced code、inline code、命令、URL、文件路径、identifier 与被引用的 literal output；除非这些内容本身有误。
+- 在正文中添加中英文边界空格，但保留既定产品名与语法。使用符合周边语言的标点。
+- 在正文中为命令、类名、方法名、参数名等程序引用添加行内代码块。
+   - 正例：“获得 `packages: write` 权限”
+   - 反例：“获得 packages: write 权限”
+   - 反例：“领域驱动设计（`Domain-Driven Design`，`DDD`）”
+- 保留有意使用的 hard line breaks、表格、数学公式、directives、admonitions、raw HTML 与 Expressive Code metadata。
+- 写出可发布的终态，不要把文章写成运维日志。修正可运行流程时，删除已废弃步骤，也不要记录如何修复的废弃步骤。
+  - 反例：`部署脚本暂不执行；后文创建包装脚本后，会返回管理员账户，统一设置两个脚本的所有者和执行权限。`
+  - 正例：`后文创建包装脚本后，会返回管理员账户，统一设置两个脚本的所有者和执行权限。`
+- 将每次 slug rename 都视为公开 URL 变更。不得自动重命名文章；展示当前 slug 与拟议 slug，解释语法或语义问题，说明链接与 SEO 影响，并等待明确批准。重命名获批后，在获批 `scope` 内更新受影响的内部链接和仓库支持的 redirects，再验证生成的 route。
+- 未获得逐项明确批准，不得更改发布日期、事实、API 名称、版本号或可运行示例。
+- 不得为实现全局一致性而修改未选中的文章；改为报告跨 scope 不一致。
 
-## Final handoff
+## Final Handoff
 
-After Phase 4, lead with whether the approved repair set was completed. Then state:
+Phase 4 完成后，先说明获批修复集是否已完成，再列出：
 
-- the resolved scope;
-- changed files and concise categories of approved fixes;
-- rejected, deferred, or still-inconclusive items;
-- link-check outcomes;
-- validation commands and outcomes.
+- 已解析的 `scope`；
+- 变更文件与已批准修复的简要类别；
+- 已拒绝、已暂缓或结论仍不确定的项目；
+- 链接检查结果；
+- 验证命令及其结果。
 
-Do not list every mechanical punctuation or spacing edit; summarize repeated patterns and identify judgment-sensitive changes individually.
+不要逐项列出机械性的标点或空格修改；汇总重复模式，并单独说明需判断的改动。
