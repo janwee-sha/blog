@@ -2,6 +2,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { siteOrigin } from "../site.config.mjs";
+import {
+	pagefindBundlePath,
+	pagefindOutputSubdir,
+	pagefindVersion,
+} from "./pagefind-config.mjs";
 
 const repoRoot = path.resolve(
 	path.dirname(fileURLToPath(import.meta.url)),
@@ -15,6 +20,33 @@ const failures = [];
 if (!fs.existsSync(distRoot)) {
 	console.error("dist/ does not exist; run pnpm build first.");
 	process.exit(1);
+}
+
+const pagefindRoot = path.join(distRoot, pagefindOutputSubdir);
+for (const generatedFile of [
+	"pagefind.js",
+	"pagefind-worker.js",
+	"pagefind-entry.json",
+]) {
+	if (!fs.existsSync(path.join(pagefindRoot, generatedFile)))
+		failures.push(
+			`Versioned Pagefind asset was not generated: ${pagefindOutputSubdir}/${generatedFile}.`,
+		);
+}
+
+const pagefindEntryFile = path.join(pagefindRoot, "pagefind-entry.json");
+if (fs.existsSync(pagefindEntryFile)) {
+	try {
+		const pagefindEntry = JSON.parse(
+			fs.readFileSync(pagefindEntryFile, "utf8"),
+		);
+		if (pagefindEntry.version !== pagefindVersion)
+			failures.push(
+				`Pagefind bundle version mismatch: expected ${pagefindVersion}, found ${pagefindEntry.version}.`,
+			);
+	} catch {
+		failures.push("Pagefind entry metadata is not valid JSON.");
+	}
 }
 
 function walk(directory) {
@@ -62,6 +94,10 @@ if (!fs.existsSync(notFoundPage))
 for (const file of htmlFiles) {
 	const html = fs.readFileSync(file, "utf8");
 	const relativeFile = path.relative(distRoot, file);
+	if (!html.includes(`const scriptUrl = "${pagefindBundlePath}pagefind.js";`))
+		failures.push(
+			`Versioned Pagefind script URL is absent in ${relativeFile}.`,
+		);
 	if (!html.includes(expectedOrigin) && relativeFile !== "404.html")
 		failures.push(`Expected canonical origin is absent in ${relativeFile}.`);
 
