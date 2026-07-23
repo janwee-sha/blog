@@ -89,7 +89,7 @@ public class DelayedMessageConsumer {
 }
 ```
 
-在消费者类中，我们消费每一条来自延迟队列的消息并输出从消息被生产到消息被接收经过了多少时间。DelayedMessageConsumer 类的输出应该和下面的示例类似：
+在消费者类中，我们消费每一条来自延迟队列的消息并输出从消息被生产到消息被接收经过了多少时间。`DelayedMessageConsumer` 类的输出应该和下面的示例类似：
 
 ```text
 [*] Waiting for messages.

@@ -137,4 +137,4 @@ public class Postgres2PCDemo {
 
 ## 引用
 
-1.  [《凤凰架构》](https://icyfenix.cn/architect-perspective/general-architecture/transaction/global.html)（周志明）
+1.  [全局事务](https://icyfenix.cn/architect-perspective/general-architecture/transaction/global.html)（《凤凰架构》，周志明）
