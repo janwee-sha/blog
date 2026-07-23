@@ -39,6 +39,8 @@ lang: "zh_CN"
 以图书模型为例：
 
 ```java
+package com.example.bookstore.book.domain.model;
+
 public class Book {
     private final BookId id;
     private String name;
@@ -51,8 +53,7 @@ public class Book {
             String name,
             Price price,
             LocalDate publishedAt,
-            AuthorId authorId
-    ) {
+            AuthorId authorId) {
         this.id = Objects.requireNonNull(id);
         renameTo(name);
         changePriceTo(price);
@@ -103,6 +104,8 @@ DDD 更鼓励通过实体的行为表达业务意图。`renameTo(newName)` 与 `
 在图书模型中，价格由币种和金额共同决定，适合建模为值对象：
 
 ```java
+package com.example.bookstore.book.domain.model;
+
 public final class Price {
     private final Currency currency;
     private final BigDecimal amount;
@@ -165,6 +168,8 @@ public final class Price {
 以订单为例，订单和订单项可以组成一个聚合，其中订单是聚合根。订单项的数量会影响订单总额，因此修改订单项必须经过订单：
 
 ```java
+package com.example.bookstore.book.domain.model;
+
 public class Order {
     private final OrderId id;
     private final List<OrderItem> items = new ArrayList<>();
@@ -202,6 +207,8 @@ public class Order {
 例如，`Book` 与 `Author` 即使关系密切，也未必属于同一个聚合。图书只需要保存 `AuthorId`：
 
 ```java
+package com.example.bookstore.book.domain.model;
+
 public class Book {
     private AuthorId authorId;
 
@@ -227,6 +234,8 @@ public class Book {
 在图书上下文中，可以定义：
 
 ```java
+package com.example.bookstore.book.domain.repository;
+
 public interface BookRepository {
     Optional<Book> findById(BookId id);
 
@@ -237,6 +246,8 @@ public interface BookRepository {
 这个接口表达的是领域模型需要的能力，没有暴露 JPA、数据库主键生成策略或逻辑删除字段等技术细节。依赖 Spring Data JPA 的实现位于基础设施层：
 
 ```java
+package com.example.bookstore.book.infrastructure.persistence;
+
 public class BookRepositoryJpaAdapter implements BookRepository {
     private final BookJpaRepository jpaRepo;
     private final BookPersistenceMapper mapper;
@@ -284,8 +295,6 @@ public class BookPO {
 
     protected BookPO() {
     }
-
-    // 构造方法与访问方法省略。
 }
 ```
 
@@ -339,9 +348,6 @@ public class BookPublicationPolicy {
 ```java
 package com.example.bookstore.order.domain.event;
 
-import com.example.bookstore.order.domain.model.OrderId;
-import java.time.Instant;
-
 public record OrderCreated(
         OrderId orderId,
         Instant occurredAt) implements DomainEvent {
@@ -353,6 +359,8 @@ public record OrderCreated(
 聚合可以在执行领域行为时记录事件：
 
 ```java
+package com.example.bookstore.book.domain.model;
+
 public class Order {
     private final List<DomainEvent> domainEvents = new ArrayList<>();
 
