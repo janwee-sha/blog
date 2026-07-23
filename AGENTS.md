@@ -5,4 +5,4 @@
 ## 协议层级
 
 - `README.md` 中包含项目的一些基本信息。
-- `docs/` 目录中包含 [Astro](https://astro.build/) 与 [Fuwari](https://github.com/saicaca/fuwari) 的一些基本信息。
+- `docs/fuwari` 目录中存放了上游仓库 [Fuwari](https://github.com/saicaca/fuwari) 的 README 文档，仅在需要查询上游仓库的信息时再读取其中的内容。

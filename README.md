@@ -1,6 +1,6 @@
 # Janwee 的博客
 
-基于 [Astro](https://astro.build/) 与 [Fuwari](https://github.com/saicaca/fuwari) 的静态博客。
+基于静态博客框架 [Astro](https://astro.build/) 与博客主题 [Fuwari](https://github.com/saicaca/fuwari) 的静态博客。
 
 ## 本地开发
 
