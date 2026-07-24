@@ -657,12 +657,21 @@ gh run watch "$RUN_ID" --exit-status
 ```bash
 sudo -iu deploy
 cd /opt/simple-clock-app
-docker compose ps
+docker compose ps -a
 docker compose images
 curl --fail --show-error http://127.0.0.1:7100/
 cat .env
 exit
 ```
+
+`docker compose ps -a` 的输出示例如下：
+
+```text
+NAME                     IMAGE                                                                                                         COMMAND                                          SERVICE   CREATED      STATUS                PORTS
+simple-clock-app-app-1   ghcr.io/janwee-sha/simple-clock-app@sha256:c6617a9b2952ed553d05f596458e7e38b9c7414d7089e4c2848f56712fc9bb95   "/docker-entrypoint.sh nginx -g 'daemon off;'"   app       2 days ago   Up 2 days (healthy)   127.0.0.1:7100->80/tcp
+```
+
+`STATUS` 中的 `Up 2 days (healthy)` 表明容器正在运行且已经通过健康检查，`PORTS` 中的 `127.0.0.1:7100->80/tcp` 则表明部署主机的回环地址端口 `7100` 已映射到容器端口 `80`。
 
 `.env` 中应该记录带 digest 的完整镜像引用，而不是 `main` 或 `latest` 标签。也可以在 GitHub 仓库的“Actions”页面查看构建日志，在“Deployments”页面查看生产环境和部署 URL。
 
