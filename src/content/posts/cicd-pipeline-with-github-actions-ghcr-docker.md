@@ -47,7 +47,11 @@ flowchart TB
 
 ## 03. 准备示例应用
 
-[simple-clock-app](https://github.com/janwee-sha/simple-clock-app) 是一个使用 React 19、TypeScript 和 Vite 8 构建的简单时钟应用，要求 Node.js 22.12.0 或更高版本，访问根路径会显示根据浏览器本地时间实时转动的圆盘时钟。构建产物位于 `dist/`。我们将以它作为示例搭建我们的 CI/CD 流水线。
+[simple-clock-app](https://github.com/janwee-sha/simple-clock-app) 是一个使用 React 19、TypeScript 和 Vite 8 构建的简单时钟应用，要求 Node.js 22.12.0 或更高版本，访问根路径会显示根据浏览器本地时间实时转动的圆盘时钟。构建产物位于 `dist/`，运行效果如下图所示：
+
+![simple-clock-app 显示圆盘时钟、数字时间和日期的运行界面](/uploads/2026/07/simple-clock-app.webp)
+
+我们将以它作为示例搭建我们的 CI/CD 流水线。
 
 克隆示例仓库：
 

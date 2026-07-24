@@ -1,0 +1,4 @@
+interface:
+  display_name: "Post Image Compressor"
+  short_description: "将博客图片压缩为 WebP quality 90 并同步更新引用"
+  default_prompt: "使用 $post-img-compressor 将指定博客图片压缩为 WebP quality 90，并更新受影响的引用路径。"
