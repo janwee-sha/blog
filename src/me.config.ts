@@ -3,7 +3,7 @@ import type { MeConfig } from "./types/me";
 export const meConfig = {
 	penName: "Janwee",
 	role: "软件工程师",
-	avatar: "/uploads/2025/07/my_avatar-300x300.jpg",
+	avatar: "/uploads/2026/07/cat.jpg",
 	bio: "知者行之始，行者知之成",
 	careerStartedAt: "2019-07-01",
 	timeZone: "Asia/Shanghai",
