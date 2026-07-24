@@ -237,9 +237,9 @@ public class Book {
 package com.example.bookstore.book.domain.repository;
 
 public interface BookRepository {
-    Optional<Book> findById(BookId id);
+    Optional<Book> bookOf(Long id);
 
-    void save(Book book);
+    void add(Book book);
 }
 ```
 
@@ -248,27 +248,22 @@ public interface BookRepository {
 ```java
 package com.example.bookstore.book.infrastructure.persistence;
 
-public class BookRepositoryJpaAdapter implements BookRepository {
-    private final BookJpaRepository jpaRepo;
-    private final BookPersistenceMapper mapper;
+@Repository
+public class BookRepositoryJpaImpl implements BookRepository {
+    private final BookPOJpaRepository jpaRepo;
 
-    public BookRepositoryJpaAdapter(
-            BookJpaRepository jpaRepo,
-            BookPersistenceMapper mapper
-    ) {
-        this.jpaRepo = jpaRepo;
-        this.mapper = mapper;
+    @Override
+    public Optional<Book> bookOf(Long id) {
+        return jpaRepo.findById(id)
+                .map(BookPOAssembler::toDomain);
     }
 
     @Override
-    public Optional<Book> findById(BookId id) {
-        return jpaRepo.findById(id.value())
-                .map(mapper::toDomain);
-    }
-
-    @Override
-    public void save(Book book) {
-        jpaRepo.save(mapper.toPersistence(book));
+    public void add(Book book) {
+        Assert.notNull(book, "Book is required");
+        Assert.isNull(book.id(), "New book must not already have an ID");
+        BookPO saved = jpaRepo.save(BookPOAssembler.toPO(book));
+        book.assignId(saved.getId());
     }
 }
 ```
@@ -298,7 +293,7 @@ public class BookPO {
 }
 ```
 
-`BookPersistenceMapper` 负责在 `Book` 和 `BookPO` 之间转换。这样，即使以后调整表结构或持久化技术，领域对象也不必被数据库映射方式牵着走。
+`BookPOAssembler` 负责在 `Book` 和 `BookPO` 之间转换。这样，即使以后调整表结构或持久化技术，领域对象也不必被数据库映射方式牵着走。
 
 并不是所有项目都必须把领域实体与持久化对象分开。如果模型简单、ORM 映射不会干扰领域行为，共用一个对象可能更经济。DDD 关心的是领域模型能否保持清晰，而不是要求每个实体都配套一个 PO 和装配器。
 
