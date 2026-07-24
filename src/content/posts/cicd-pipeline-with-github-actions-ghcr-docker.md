@@ -1,7 +1,7 @@
 ---
 title: "使用 GitHub Actions、GHCR、Docker Compose 搭建 CI/CD 管道"
 published: 2026-07-21
-updated: 2026-07-22
+updated: 2026-07-25
 description: "以一个简单时钟应用为例，使用 GitHub Actions、GHCR、Docker Compose 搭建 CI/CD 管道。"
 image: ""
 tags: ["CI/CD 管道", "Docker", "GHCR", "GitHub Actions"]
@@ -14,9 +14,15 @@ lang: "zh_CN"
 >
 > ——《礼记·中庸》
 
-## 01. 目标与流程
+## 01. 前言
 
-本文演示使用 GitHub Actions、GitHub Container Registry（GHCR）和 Docker Compose 搭建一条完整的 CI/CD 管道。整体流程如下：
+当项目从“能在本地运行”走向长期部署时，手动执行构建、上传和服务重启不仅烦琐，也容易因环境差异或操作遗漏导致发布失败。一条可靠的 CI/CD 管道应当把代码验证、镜像构建、制品发布、远程部署和失败恢复连接起来，让每次变更都经过一致且可追踪的流程。
+
+本文以一个简单的前端应用为例，从零搭建一条适合单机部署的 CI/CD 管道：GitHub Actions 负责持续集成，GitHub Container Registry（GHCR）保存不可变的容器镜像，Docker Compose 在 Linux 主机上运行应用，部署脚本则根据健康检查结果完成发布或执行回滚。重点不在示例应用本身，而在于理解各个环节如何衔接，以及凭据、权限和部署状态应如何管理。
+
+## 02. 目标与流程
+
+这条管道的整体流程如下：
 
 1. Pull Request 指向 `main` 时安装锁定依赖，执行单元测试和生产构建。
 2. 代码合并到 `main` 后再次通过验证，再构建 Docker 镜像并推送到 GHCR。
@@ -41,7 +47,7 @@ flowchart TB
 
 目标环境是一台安装了 Docker Engine、Docker Compose V2 和 SSH 服务的 `linux/amd64` 主机。GitHub 托管的 Runner 能够访问该主机的 SSH 端口。本方案适合个人服务或中小型单机应用；更新容器时会有短暂中断，并不提供滚动发布或零停机能力。
 
-## 02. 准备示例应用
+## 03. 准备示例应用
 
 克隆示例仓库：
 
@@ -69,7 +75,7 @@ npm run build
 
 `npm test` 使用 Vitest 和 jsdom 运行 `src/App.test.tsx` 中的 3 个测试，验证时钟表盘、日期时间和定时刷新行为。`npm run build` 先执行 TypeScript 类型检查，再让 Vite 生成 `dist/`。实际项目还应根据功能复杂度补充端到端测试和浏览器兼容性验证。
 
-## 03. 构建应用镜像
+## 04. 构建应用镜像
 
 在仓库根目录创建 `Dockerfile`：
 
@@ -119,7 +125,7 @@ HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=3 \
 - `--interval=10s`：每 10 秒检查一次。
 - `--timeout=3s`：单次检查最多等待 3 秒。
 - `--start-period=10s`：启动后的前 10 秒为宽限期。
-- `--retries=3`：连续失败 3 次后标记为 unhealthy。
+- `--retries=3`：连续失败 3 次后标记为 `unhealthy`。
 - `wget -q`：安静地请求 Nginx 根路径。
 - `-O /dev/null`：丢弃响应内容。
 - `|| exit 1`：请求失败时返回非零退出码。
@@ -149,7 +155,7 @@ docker run --rm --name simple-clock-app-local -p 7100:80 simple-clock-app:local
 
 另开一个终端访问 `http://127.0.0.1:7100`。确认应用正常后，按 `Ctrl+C` 停止容器。
 
-## 04. 准备 Linux 部署主机
+## 05. 准备 Linux 部署主机
 
 按照 [Docker Engine 官方安装指引](https://docs.docker.com/engine/install/) 安装 Docker Engine 和 Docker Compose 插件。然后创建专用部署用户和应用目录：
 
@@ -171,7 +177,7 @@ exit
 > [!WARNING]
 > 能够访问 Docker daemon 的账户通常具有接近 root 的权限。应使用专用部署账户，把 Actions 公钥限制为只能执行部署包装脚本，并为生产主机配置防火墙。GitHub 托管 Runner 的出口地址会变化，不能把“限制 SSH 来源”当成默认可行的控制。不要把个人日常使用的 SSH 私钥交给 GitHub Actions。
 
-### 4.1. 登录 GHCR
+### 5.1. 登录 GHCR
 
 GitHub Actions 发布与当前仓库关联的镜像时，可以使用自动生成的 `GITHUB_TOKEN`。这个令牌在每个 Job 开始时由 GitHub 签发，Job 结束后自动失效；下一次运行会得到新令牌，不需要手动更新。
 
@@ -208,7 +214,7 @@ gh api --method PATCH \
 
 当 API 返回 `public` 时，部署主机可以匿名拉取镜像；返回 `private` 时，应按照前文为部署主机配置只读凭据。仓库的可见性与 Package 的可见性是两个独立设置，应以 Package API 的结果为准。
 
-## 05. 编写 Docker Compose 配置
+## 06. 编写 Docker Compose 配置
 
 以 `deploy` 用户身份登录 shell 并进入应用目录：
 
@@ -243,7 +249,7 @@ docker compose up --wait
 
 如果帮助信息中没有这些选项，应先升级 Compose 插件，而不是删除等待健康状态的逻辑。
 
-## 06. 编写部署与回滚脚本
+## 07. 编写部署与回滚脚本
 
 在 `/opt/simple-clock-app` 中创建 `deploy.sh`：
 
@@ -341,7 +347,7 @@ exit 1
 
 部署失败时，脚本会打印新容器最后 100 行日志并尝试恢复原镜像。即使回滚成功，它仍返回非零状态，这样 GitHub Actions 不会把一次失败后回滚的发布错误标记为成功。首次部署还没有旧版本，如果新容器不健康，脚本会停止它并等待人工修复。
 
-### 6.1. 限制部署密钥可以执行的命令
+### 7.1. 限制部署密钥可以执行的命令
 
 仅在工作流中校验变量不够，因为 SSH 私钥一旦泄露，攻击者仍可能尝试打开交互式 shell。创建 `/opt/simple-clock-app/ssh-deploy-wrapper.sh`：
 
@@ -371,7 +377,7 @@ sudo chmod 750 \
   /opt/simple-clock-app/ssh-deploy-wrapper.sh
 ```
 
-### 6.2. 配置 SSH 部署密钥
+### 7.2. 配置 SSH 部署密钥
 
 包装脚本就绪后，为 GitHub Actions 生成专用部署密钥：
 
@@ -406,7 +412,7 @@ ssh-keygen -lf deploy-known-hosts
 
 `DEPLOY_HOST` 必须是 GitHub 托管 Runner 能够直接访问 SSH 端口的主机名或 IP 地址。使用域名时，应确认它解析到部署主机，并且中间没有只支持 Web 流量的代理。
 
-## 07. 配置 GitHub Environment
+## 08. 配置 GitHub Environment
 
 使用 GitHub CLI 创建 `production` Environment：
 
@@ -463,7 +469,7 @@ gh secret list --env production \
 
 将 Environment 的部署分支限制为 `main`。如果当前仓库和 GitHub 套餐支持 Required reviewers，建议至少在首次发布时要求人工批准：这样可以先确认 GHCR Package 可匿名拉取，再放行生产部署。部署 Job 在保护规则通过前无法读取 Environment Secrets。
 
-## 08. 编写 GitHub Actions 工作流
+## 09. 编写 GitHub Actions 工作流
 
 在应用仓库创建 `.github/workflows/pipeline.yml`：
 
@@ -610,7 +616,7 @@ jobs:
 
 工作流把外部 Action 固定到相应主版本标签指向的完整 commit SHA，注释则保留可读的主版本号。完整 SHA 不会像可移动标签一样在不知情的情况下指向其他代码；同时应使用 Dependabot 持续更新这些 SHA，而不是永久停留在当前提交。
 
-## 09. 首次部署与验证
+## 10. 首次部署与验证
 
 把 `Dockerfile`、`.dockerignore`、`.github/workflows/pipeline.yml` 和 `deploy/` 下的主机配置提交到特性分支。使用 GitHub CLI 创建 PR、等待 CI 并合并：
 
@@ -622,7 +628,7 @@ gh pr ready
 gh pr merge --squash
 ```
 
-`Test and build` Job 成功后，合并触发 `publish`。首次部署在 reviewer 处暂停时，先按 4.1 节确认 Package 为公开，再通过 API 批准对应 Environment：
+`Test and build` Job 成功后，合并触发 `publish`。首次部署在 reviewer 处暂停时，先按 5.1 节确认 Package 为公开，再通过 API 批准对应 Environment：
 
 ```bash
 RUN_ID="$(gh run list --workflow pipeline.yml \
@@ -658,7 +664,7 @@ exit
 
 如果第一次由工作流发布镜像时出现 `permission_denied: write_package`，检查同名 GHCR Package 是否曾由命令行创建但没有关联当前仓库。在 Package 设置中连接仓库并授予 GitHub Actions 写入权限后重试。
 
-## 10. 验证自动回滚
+## 11. 验证自动回滚
 
 回滚测试会先用不健康容器替换当前容器，再恢复上一版本，因此会造成一段可预期的中断。不要把已知错误的健康检查直接合并到真实业务的 `main`；应在 staging、专用演示应用或明确的维护窗口中执行。
 
@@ -688,7 +694,7 @@ exit
 
 脚本仍会执行拉取、健康检查和失败回滚，不应直接编辑 `.env` 后跳过验证。
 
-## 11. 安全与适用边界
+## 12. 安全与适用边界
 
 这条管道刻意把构建权限、发布权限和生产凭据分开，但仍需要注意以下事项：
 
@@ -711,9 +717,10 @@ exit
 5.  GitHub 部署环境与保护规则：[https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments)
 6.  GitHub Actions 安全使用指南：[https://docs.github.com/en/actions/reference/security/secure-use](https://docs.github.com/en/actions/reference/security/secure-use)
 7.  Docker Build 的 GitHub Actions 集成：[https://docs.docker.com/build/ci/github-actions/](https://docs.docker.com/build/ci/github-actions/)
-8.  Docker Compose 变量插值：[https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/](https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/)
-9.  `docker compose up` 命令：[https://docs.docker.com/reference/cli/docker/compose/up/](https://docs.docker.com/reference/cli/docker/compose/up/)
-10.  simple-clock-app 示例项目：[https://github.com/janwee-sha/simple-clock-app](https://github.com/janwee-sha/simple-clock-app)
-11.  setup-node Action：[https://github.com/actions/setup-node](https://github.com/actions/setup-node)
-12.  Nginx Docker 官方镜像：[https://hub.docker.com/_/nginx](https://hub.docker.com/_/nginx)
-13.  GitHub CLI 手册：[https://cli.github.com/manual/](https://cli.github.com/manual/)
+8.  Docker Engine 安装指南：[https://docs.docker.com/engine/install/](https://docs.docker.com/engine/install/)
+9.  Docker Compose 变量插值：[https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/](https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/)
+10.  `docker compose up` 命令：[https://docs.docker.com/reference/cli/docker/compose/up/](https://docs.docker.com/reference/cli/docker/compose/up/)
+11.  simple-clock-app 示例项目：[https://github.com/janwee-sha/simple-clock-app](https://github.com/janwee-sha/simple-clock-app)
+12.  setup-node Action：[https://github.com/actions/setup-node](https://github.com/actions/setup-node)
+13.  Nginx Docker 官方镜像：[https://hub.docker.com/_/nginx](https://hub.docker.com/_/nginx)
+14.  GitHub CLI 手册：[https://cli.github.com/manual/](https://cli.github.com/manual/)
