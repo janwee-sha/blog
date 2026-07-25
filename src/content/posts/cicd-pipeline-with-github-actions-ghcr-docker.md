@@ -384,7 +384,7 @@ sudo chmod 750 \
 
 ### 7.2. 配置 SSH 部署密钥
 
-包装脚本就绪后，为 GitHub Actions 生成专用部署密钥：
+包装脚本就绪后，回到本地或其他可信管理终端中，为 GitHub Actions 生成专用部署密钥。不要在部署主机上执行下面的命令：
 
 ```bash
 ssh-keygen -t ed25519 -N '' \
@@ -394,7 +394,7 @@ ssh-keygen -t ed25519 -N '' \
 
 命令会在当前目录生成私钥 `github-actions-deploy` 和公钥 `github-actions-deploy.pub`。不要把私钥提交到仓库，也不要发送给部署主机。
 
-在部署主机将公钥写入 `/home/deploy/.ssh/authorized_keys`，并在公钥前添加以下选项；将 `<PUBLIC_KEY>` 替换为 `github-actions-deploy.pub` 中的完整公钥：
+只将公钥传到部署主机，把它写入 `/home/deploy/.ssh/authorized_keys`，并在公钥前添加以下选项；将 `<PUBLIC_KEY>` 替换为 `github-actions-deploy.pub` 中的完整公钥：
 
 ```text title="/home/deploy/.ssh/authorized_keys"
 restrict,command="/opt/simple-clock-app/ssh-deploy-wrapper.sh" ssh-ed25519 <PUBLIC_KEY> github-actions-deploy
@@ -402,7 +402,7 @@ restrict,command="/opt/simple-clock-app/ssh-deploy-wrapper.sh" ssh-ed25519 <PUBL
 
 `restrict` 会关闭端口转发、代理转发、X11 和 PTY，`command` 则忽略客户端请求的实际程序，只运行包装脚本。只有格式正确的 `deploy ghcr.io/...@sha256:...` 命令才能进入部署脚本，这个限制比仅依赖工作流里的字符串校验更可靠。
 
-首次连接前，回到可信的管理终端，按实际 SSH 端口读取主机公钥：
+完成公钥配置后，回到本地或其他可信管理终端中，按实际 SSH 端口读取主机公钥：
 
 ```bash
 DEPLOY_HOST=192.0.2.10
@@ -419,7 +419,7 @@ ssh-keygen -lf deploy-known-hosts
 
 ## 08. 配置 GitHub Environment
 
-使用 GitHub CLI 创建 `production` Environment：
+继续在本地或其他可信管理终端中，使用 GitHub CLI 创建 `production` Environment：
 
 ```bash
 gh auth login --web \
@@ -440,7 +440,7 @@ gh api --method PUT \
 | `DEPLOY_USER` | `deploy` | 专用部署用户 |
 | `APP_URL` | `https://app.example.com` | 显示在 GitHub Deployment 中的应用地址 |
 
-Environment 创建完成后，在保存 `github-actions-deploy` 和 `deploy-known-hosts` 的可信管理终端中上传以下 Environment Secrets。`DEPLOY_SSH_KEY` 必须读取私钥 `github-actions-deploy`，不要误用公钥文件 `github-actions-deploy.pub`：
+Environment 创建完成后，在本地或其他可信管理终端中上传以下 Environment Secrets。该终端应保存 `github-actions-deploy` 和 `deploy-known-hosts`；`DEPLOY_SSH_KEY` 必须读取私钥 `github-actions-deploy`，不要误用公钥文件 `github-actions-deploy.pub`：
 
 | 名称 | 内容 |
 | --- | --- |
@@ -470,7 +470,7 @@ gh secret list --env production \
   --repo janwee-sha/simple-clock-app
 ```
 
-最后一条命令只会列出 Secret 名称和更新时间，不会显示原始内容。确认 `DEPLOY_SSH_KEY` 和 `DEPLOY_KNOWN_HOSTS` 都已存在后，还可以在仓库网页的 **Settings → Environments → production → Environment secrets** 中核对；也可以在这里点击 **Add environment secret**，以相同名称分别粘贴两个文件的完整内容，完成等价的网页操作。上传成功并验证受限公钥可用后，删除管理终端上的临时私钥副本。
+最后一条命令只会列出 Secret 名称和更新时间，不会显示原始内容。确认 `DEPLOY_SSH_KEY` 和 `DEPLOY_KNOWN_HOSTS` 都已存在后，还可以在仓库网页的 **Settings → Environments → production → Environment secrets** 中核对；也可以在这里点击 **Add environment secret**，以相同名称分别粘贴两个文件的完整内容，完成等价的网页操作。上传成功并验证受限公钥可用后，删除本地或其他可信管理终端上的临时私钥副本。
 
 将 Environment 的部署分支限制为 `main`。如果当前仓库和 GitHub 套餐支持 Required reviewers，建议至少在首次发布时要求人工批准：这样可以先确认 GHCR Package 可匿名拉取，再放行生产部署。部署 Job 在保护规则通过前无法读取 Environment Secrets。
 
