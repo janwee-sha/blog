@@ -189,7 +189,7 @@ GitHub Actions 发布与当前仓库关联的镜像时，可以使用自动生�
 
 1. 登录用于拉取镜像的 GitHub 账户，进入 **Settings → Developer settings → Personal access tokens → Tokens (classic)**。
 2. 点击 **Generate new token → Generate new token (classic)**。
-3. 填写用途说明，例如 `simple-clock-app deploy`，并设置尽可能短的有效期。
+3. 填写用途说明，例如 “simple-clock-app deploy”，并设置尽可能短的有效期。
 4. 只勾选 `read:packages`。创建令牌的账户本身还必须拥有目标 Package 的读取权限。
 5. 点击 **Generate token** 并立即复制令牌；GitHub 离开页面后不会再次显示完整内容。如果 Package 属于启用了 SAML SSO 的组织，还需为该组织点击 **Configure SSO → Authorize**。
 

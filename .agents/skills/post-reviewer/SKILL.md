@@ -113,6 +113,7 @@ description: 交互式审阅并修复此 Astro/Fuwari 博客中 src/content/post
 - 在正文中为命令、类名、方法名、参数名等程序引用添加行内代码块。
    - 正例：“获得 `packages: write` 权限”
    - 反例：“获得 packages: write 权限”
+   - 反例：“填写用途说明，例如 `simple-clock-app deploy`”
    - 反例：“领域驱动设计（`Domain-Driven Design`，`DDD`）”
 - 保留有意使用的 hard line breaks、表格、数学公式、directives、admonitions、raw HTML 与 Expressive Code metadata。
 - 按代码片段的写作意图判断完整性。对仅用于解释概念的演示代码，不得仅因缺少完整包声明或包名、导入或引用、依赖或来源链接以及外围样板而报错或补全；优先保留聚焦概念的最小示例。只有当代码明确讲解包结构或导入、引用关系，或者属于需要实际可运行的教程步骤时，才要求补齐与其目的相符的信息，并将可运行代码改动按 Phase 2 交由用户复核。
