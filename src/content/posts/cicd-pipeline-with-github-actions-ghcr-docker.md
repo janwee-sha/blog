@@ -193,7 +193,7 @@ GitHub Actions 发布与当前仓库关联的镜像时，可以使用自动生�
 4. 只勾选 `read:packages`。创建令牌的账户本身还必须拥有目标 Package 的读取权限。
 5. 点击 **Generate token** 并立即复制令牌；GitHub 离开页面后不会再次显示完整内容。如果 Package 属于启用了 SAML SSO 的组织，还需为该组织点击 **Configure SSO → Authorize**。
 
-下面的示例假定令牌由 `janwee-sha` 账户创建；如果使用其他有权读取 Package 的账户，应把 `docker login` 中的用户名替换为该账户名。通过密码管理器或其他加密通道把令牌传到部署主机，在 `GHCR token:` 提示后粘贴。`read -s` 不会回显输入，也不会把令牌直接写进命令历史。在部署主机切换到 `deploy` 的登录 shell，登录 GHCR 后返回管理员账户：
+通过密码管理器或其他加密通道把令牌传到部署主机，在 `GHCR token:` 提示后粘贴。`read -s` 不会回显输入，也不会把令牌直接写进命令历史。在部署主机切换到 `deploy` 的登录 shell，登录 GHCR 后返回管理员账户：
 
 ```bash
 sudo -iu deploy
@@ -202,6 +202,9 @@ printf '%s' "$CR_PAT" | docker login ghcr.io -u janwee-sha --password-stdin
 unset CR_PAT
 exit
 ```
+
+> [!NOTE]
+> 将命令中的 `janwee-sha` 替换为你自己的 GitHub 账号。
 
 GHCR 的个人访问令牌需要自行轮换。`docker login` 默认可能把凭据保存在用户目录的 Docker 配置中；生产环境应考虑使用 Docker credential helper。如果镜像被设置为公开，则部署主机可以匿名拉取，无需保存这个令牌。
 
@@ -347,6 +350,9 @@ fi
 exit 1
 ```
 
+> [!NOTE]
+> 将脚本中的 `janwee-sha` 替换为你自己的 GitHub 账号。
+
 脚本只接受固定 GHCR 仓库下的 SHA-256 digest，避免把任意字符串拼接到远程命令中。`.env` 通过临时文件和 `mv` 原子替换；`flock` 则避免手动部署与自动部署同时修改状态。
 
 部署失败时，脚本会打印新容器最后 100 行日志并尝试恢复原镜像。即使回滚成功，它仍返回非零状态，这样 GitHub Actions 不会把一次失败后回滚的发布错误标记为成功。首次部署还没有旧版本，如果新容器不健康，脚本会停止它并等待人工修复。
@@ -368,6 +374,9 @@ fi
 echo "Rejected SSH command." >&2
 exit 126
 ```
+
+> [!NOTE]
+> 将正则表达式中的 `janwee-sha` 替换为你自己的 GitHub 账号。
 
 创建完成后，退出 `deploy` 的登录 shell，返回管理员账户，并统一设置两个脚本的所有者和执行权限：
 
@@ -431,6 +440,9 @@ gh api --method PUT \
   -F prevent_self_review=false
 ```
 
+> [!NOTE]
+> 将 API 路径中的 `janwee-sha` 替换为你自己的 GitHub 账号。
+
 添加以下 Environment Variables：
 
 | 名称 | 示例 | 用途 |
@@ -469,6 +481,9 @@ gh secret set DEPLOY_KNOWN_HOSTS --env production \
 gh secret list --env production \
   --repo janwee-sha/simple-clock-app
 ```
+
+> [!NOTE]
+> 将所有 `--repo janwee-sha/simple-clock-app` 中的 `janwee-sha` 替换为你自己的 GitHub 账号。
 
 最后一条命令只会列出 Secret 名称和更新时间，不会显示原始内容。确认 `DEPLOY_SSH_KEY` 和 `DEPLOY_KNOWN_HOSTS` 都已存在后，还可以在仓库网页的 **Settings → Environments → production → Environment secrets** 中核对；也可以在这里点击 **Add environment secret**，以相同名称分别粘贴两个文件的完整内容，完成等价的网页操作。上传成功并验证受限公钥可用后，删除本地或其他可信管理终端上的临时私钥副本。
 
@@ -705,6 +720,9 @@ sudo -iu deploy
   'ghcr.io/janwee-sha/simple-clock-app@sha256:<64-character-digest>'
 exit
 ```
+
+> [!NOTE]
+> 将镜像引用中的 `janwee-sha` 替换为你自己的 GitHub 账号。
 
 脚本仍会执行拉取、健康检查和失败回滚，不应直接编辑 `.env` 后跳过验证。
 
