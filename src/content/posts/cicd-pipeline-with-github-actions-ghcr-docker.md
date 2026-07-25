@@ -380,6 +380,7 @@ sudo chmod 750 \
   /opt/simple-clock-app/deploy.sh \
   /opt/simple-clock-app/ssh-deploy-wrapper.sh
 ```
+上述指令会赋予 `root` 读、写、执行权限，但仅赋予 `deploy` 用户读、执行权限。这样做的目的，是让 `deploy` 用户可以执行部署脚本，却不能篡改脚本内容；只有 `root` 能修改它们。
 
 ### 7.2. 配置 SSH 部署密钥
 
