@@ -18,7 +18,7 @@ lang: "zh_CN"
 
 当项目从“能在本地运行”走向长期部署时，手动执行构建、上传和服务重启不仅烦琐，也容易因环境差异或操作遗漏导致发布失败。一条可靠的 CI/CD 管道应当把代码验证、镜像构建、制品发布、远程部署和失败恢复连接起来，让每次变更都经过一致且可追踪的流程。
 
-本文以一个简单的前端应用为例，从零搭建一条适合单机部署的 CI/CD 管道：GitHub Actions 负责持续集成，GitHub Container Registry（GHCR）保存不可变的容器镜像，Docker Compose 在 Linux 主机上运行应用，部署脚本则根据健康检查结果完成发布或执行回滚。重点不在示例应用本身，而在于理解各个环节如何衔接，以及凭据、权限和部署状态应如何管理。
+本文以一个简单的前端应用为例，从零搭建一条适合单机部署的 CI/CD 管道：GitHub Actions 负责持续集成，GitHub Container Registry（GHCR）保存不可变的容器镜像，Docker Compose 在 Linux 主机上运行应用，部署脚本则根据健康检查结果完成发布或执行回滚。
 
 ## 02. 目标与流程
 
@@ -44,6 +44,8 @@ flowchart TB
 ```
 
 目标环境是一台安装了 Docker Engine、Docker Compose V2 和 SSH 服务的 `linux/amd64` 主机。GitHub 托管的 Runner 能够访问该主机的 SSH 端口。本方案适合个人服务或中小型单机应用；更新容器时会有短暂中断，并不提供滚动发布或零停机能力。
+
+如果远程主机尚未安装这些服务，请参照目标发行版对应的 [Docker Engine 安装文档](https://docs.docker.com/engine/install/) 和 [Docker Compose 插件安装文档](https://docs.docker.com/compose/install/linux/) 完成安装；SSH 服务则参考该发行版的官方说明，例如 Ubuntu 的 [OpenSSH Server 安装文档](https://documentation.ubuntu.com/server/how-to/security/openssh-server/)。安装后确认 `docker version`、`docker compose version` 和 SSH 登录均可用，再继续后续步骤。
 
 ## 03. 准备示例应用
 
@@ -189,11 +191,11 @@ GitHub Actions 发布与当前仓库关联的镜像时，可以使用自动生�
 
 1. 登录用于拉取镜像的 GitHub 账户，进入 **Settings → Developer settings → Personal access tokens → Tokens (classic)**。
 2. 点击 **Generate new token → Generate new token (classic)**。
-3. 填写用途说明，例如 `simple-clock-app deploy`，并设置尽可能短的有效期。
+3. 填写用途说明，例如 “simple-clock-app deploy”，并设置尽可能短的有效期。
 4. 只勾选 `read:packages`。创建令牌的账户本身还必须拥有目标 Package 的读取权限。
 5. 点击 **Generate token** 并立即复制令牌；GitHub 离开页面后不会再次显示完整内容。如果 Package 属于启用了 SAML SSO 的组织，还需为该组织点击 **Configure SSO → Authorize**。
 
-下面的示例假定令牌由 `janwee-sha` 账户创建；如果使用其他有权读取 Package 的账户，应把 `docker login` 中的用户名替换为该账户名。通过密码管理器或其他加密通道把令牌传到部署主机，在 `GHCR token:` 提示后粘贴。`read -s` 不会回显输入，也不会把令牌直接写进命令历史。在部署主机切换到 `deploy` 的登录 shell，登录 GHCR 后返回管理员账户：
+通过密码管理器或其他加密通道把令牌传到部署主机，在 `GHCR token:` 提示后粘贴。`read -s` 不会回显输入，也不会把令牌直接写进命令历史。在部署主机切换到 `deploy` 的登录 shell，登录 GHCR 后返回管理员账户：
 
 ```bash
 sudo -iu deploy
@@ -202,6 +204,9 @@ printf '%s' "$CR_PAT" | docker login ghcr.io -u janwee-sha --password-stdin
 unset CR_PAT
 exit
 ```
+
+> [!NOTE]
+> 将命令中的 `janwee-sha` 替换为你自己的 GitHub 账号。
 
 GHCR 的个人访问令牌需要自行轮换。`docker login` 默认可能把凭据保存在用户目录的 Docker 配置中；生产环境应考虑使用 Docker credential helper。如果镜像被设置为公开，则部署主机可以匿名拉取，无需保存这个令牌。
 
@@ -347,6 +352,9 @@ fi
 exit 1
 ```
 
+> [!NOTE]
+> 将脚本中的 `janwee-sha` 替换为你自己的 GitHub 账号。
+
 脚本只接受固定 GHCR 仓库下的 SHA-256 digest，避免把任意字符串拼接到远程命令中。`.env` 通过临时文件和 `mv` 原子替换；`flock` 则避免手动部署与自动部署同时修改状态。
 
 部署失败时，脚本会打印新容器最后 100 行日志并尝试恢复原镜像。即使回滚成功，它仍返回非零状态，这样 GitHub Actions 不会把一次失败后回滚的发布错误标记为成功。首次部署还没有旧版本，如果新容器不健康，脚本会停止它并等待人工修复。
@@ -369,6 +377,9 @@ echo "Rejected SSH command." >&2
 exit 126
 ```
 
+> [!NOTE]
+> 将正则表达式中的 `janwee-sha` 替换为你自己的 GitHub 账号。
+
 创建完成后，退出 `deploy` 的登录 shell，返回管理员账户，并统一设置两个脚本的所有者和执行权限：
 
 ```bash
@@ -380,10 +391,11 @@ sudo chmod 750 \
   /opt/simple-clock-app/deploy.sh \
   /opt/simple-clock-app/ssh-deploy-wrapper.sh
 ```
+上述指令会赋予 `root` 读、写、执行权限，但仅赋予 `deploy` 用户读、执行权限。这样做的目的，是让 `deploy` 用户可以执行部署脚本，却不能篡改脚本内容；只有 `root` 能修改它们。
 
 ### 7.2. 配置 SSH 部署密钥
 
-包装脚本就绪后，为 GitHub Actions 生成专用部署密钥：
+包装脚本就绪后，回到本地或其他可信管理终端中，为 GitHub Actions 生成专用部署密钥。不要在部署主机上执行下面的命令：
 
 ```bash
 ssh-keygen -t ed25519 -N '' \
@@ -393,7 +405,7 @@ ssh-keygen -t ed25519 -N '' \
 
 命令会在当前目录生成私钥 `github-actions-deploy` 和公钥 `github-actions-deploy.pub`。不要把私钥提交到仓库，也不要发送给部署主机。
 
-在部署主机将公钥写入 `/home/deploy/.ssh/authorized_keys`，并在公钥前添加以下选项；将 `<PUBLIC_KEY>` 替换为 `github-actions-deploy.pub` 中的完整公钥：
+只将公钥传到部署主机，把它写入 `/home/deploy/.ssh/authorized_keys`，并在公钥前添加以下选项；将 `<PUBLIC_KEY>` 替换为 `github-actions-deploy.pub` 中的完整公钥：
 
 ```text title="/home/deploy/.ssh/authorized_keys"
 restrict,command="/opt/simple-clock-app/ssh-deploy-wrapper.sh" ssh-ed25519 <PUBLIC_KEY> github-actions-deploy
@@ -401,7 +413,7 @@ restrict,command="/opt/simple-clock-app/ssh-deploy-wrapper.sh" ssh-ed25519 <PUBL
 
 `restrict` 会关闭端口转发、代理转发、X11 和 PTY，`command` 则忽略客户端请求的实际程序，只运行包装脚本。只有格式正确的 `deploy ghcr.io/...@sha256:...` 命令才能进入部署脚本，这个限制比仅依赖工作流里的字符串校验更可靠。
 
-首次连接前，回到可信的管理终端，按实际 SSH 端口读取主机公钥：
+完成公钥配置后，回到本地或其他可信管理终端中，按实际 SSH 端口读取主机公钥：
 
 ```bash
 DEPLOY_HOST=192.0.2.10
@@ -418,17 +430,24 @@ ssh-keygen -lf deploy-known-hosts
 
 ## 08. 配置 GitHub Environment
 
-使用 GitHub CLI 创建 `production` Environment：
+在本地或其他可信管理终端使用 GitHub CLI（`gh`）检查 GHCR Package、配置 Environment 和操作 Pull Request。首次使用时，按照 [GitHub CLI 官方安装说明](https://github.com/cli/cli#installation) 为当前操作系统完成安装。安装完成后用如下命令通过浏览器登录 GitHub 账号：
 
 ```bash
 gh auth login --web \
   --scopes repo,workflow,write:packages
+```
 
+然后使用 GitHub CLI 创建 `production` Environment：
+
+```bash
 gh api --method PUT \
   repos/janwee-sha/simple-clock-app/environments/production \
   -F wait_timer=0 \
   -F prevent_self_review=false
 ```
+
+> [!NOTE]
+> 将 API 路径中的 `janwee-sha` 替换为你自己的 GitHub 账号。
 
 添加以下 Environment Variables：
 
@@ -439,7 +458,7 @@ gh api --method PUT \
 | `DEPLOY_USER` | `deploy` | 专用部署用户 |
 | `APP_URL` | `https://app.example.com` | 显示在 GitHub Deployment 中的应用地址 |
 
-Environment 创建完成后，在保存 `github-actions-deploy` 和 `deploy-known-hosts` 的可信管理终端中上传以下 Environment Secrets。`DEPLOY_SSH_KEY` 必须读取私钥 `github-actions-deploy`，不要误用公钥文件 `github-actions-deploy.pub`：
+Environment 创建完成后，在本地或其他可信管理终端中上传以下 Environment Secrets。该终端应保存 `github-actions-deploy` 和 `deploy-known-hosts`；`DEPLOY_SSH_KEY` 必须读取私钥 `github-actions-deploy`，不要误用公钥文件 `github-actions-deploy.pub`：
 
 | 名称 | 内容 |
 | --- | --- |
@@ -469,7 +488,10 @@ gh secret list --env production \
   --repo janwee-sha/simple-clock-app
 ```
 
-最后一条命令只会列出 Secret 名称和更新时间，不会显示原始内容。确认 `DEPLOY_SSH_KEY` 和 `DEPLOY_KNOWN_HOSTS` 都已存在后，还可以在仓库网页的 **Settings → Environments → production → Environment secrets** 中核对；也可以在这里点击 **Add environment secret**，以相同名称分别粘贴两个文件的完整内容，完成等价的网页操作。上传成功并验证受限公钥可用后，删除管理终端上的临时私钥副本。
+> [!NOTE]
+> 将所有 `--repo janwee-sha/simple-clock-app` 中的 `janwee-sha` 替换为你自己的 GitHub 账号。
+
+最后一条命令只会列出 Secret 名称和更新时间，不会显示原始内容。确认 `DEPLOY_SSH_KEY` 和 `DEPLOY_KNOWN_HOSTS` 都已存在后，还可以在仓库网页的 **Settings → Environments → production → Environment secrets** 中核对；也可以在这里点击 **Add environment secret**，以相同名称分别粘贴两个文件的完整内容，完成等价的网页操作。上传成功并验证受限公钥可用后，删除本地或其他可信管理终端上的临时私钥副本。
 
 将 Environment 的部署分支限制为 `main`。如果当前仓库和 GitHub 套餐支持 Required reviewers，建议至少在首次发布时要求人工批准：这样可以先确认 GHCR Package 可匿名拉取，再放行生产部署。部署 Job 在保护规则通过前无法读取 Environment Secrets。
 
@@ -705,6 +727,9 @@ sudo -iu deploy
 exit
 ```
 
+> [!NOTE]
+> 将镜像引用中的 `janwee-sha` 替换为你自己的 GitHub 账号。
+
 脚本仍会执行拉取、健康检查和失败回滚，不应直接编辑 `.env` 后跳过验证。
 
 ## 12. 安全与适用边界
@@ -737,3 +762,5 @@ exit
 12.  setup-node Action：[https://github.com/actions/setup-node](https://github.com/actions/setup-node)
 13.  Nginx Docker 官方镜像：[https://hub.docker.com/_/nginx](https://hub.docker.com/_/nginx)
 14.  GitHub CLI 手册：[https://cli.github.com/manual/](https://cli.github.com/manual/)
+15.  GitHub CLI 安装说明：[https://github.com/cli/cli#installation](https://github.com/cli/cli#installation)
+16.  `gh auth login` 命令：[https://cli.github.com/manual/gh_auth_login](https://cli.github.com/manual/gh_auth_login)
