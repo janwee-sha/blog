@@ -45,6 +45,8 @@ flowchart TB
 
 目标环境是一台安装了 Docker Engine、Docker Compose V2 和 SSH 服务的 `linux/amd64` 主机。GitHub 托管的 Runner 能够访问该主机的 SSH 端口。本方案适合个人服务或中小型单机应用；更新容器时会有短暂中断，并不提供滚动发布或零停机能力。
 
+如果远程主机尚未安装这些服务，请参照目标发行版对应的 [Docker Engine 安装文档](https://docs.docker.com/engine/install/) 和 [Docker Compose 插件安装文档](https://docs.docker.com/compose/install/linux/) 完成安装；SSH 服务则参考该发行版的官方说明，例如 Ubuntu 的 [OpenSSH Server 安装文档](https://documentation.ubuntu.com/server/how-to/security/openssh-server/)。安装后确认 `docker version`、`docker compose version` 和 SSH 登录均可用，再继续后续步骤。
+
 ## 03. 准备示例应用
 
 [simple-clock-app](https://github.com/janwee-sha/simple-clock-app) 是一个使用 React 19、TypeScript 和 Vite 8 构建的简单时钟应用，要求 Node.js 22.12.0 或更高版本，访问根路径会显示根据浏览器本地时间实时转动的圆盘时钟。构建产物位于 `dist/`，运行效果如下图所示：
