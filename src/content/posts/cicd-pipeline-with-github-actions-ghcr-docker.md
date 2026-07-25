@@ -430,12 +430,16 @@ ssh-keygen -lf deploy-known-hosts
 
 ## 08. 配置 GitHub Environment
 
-继续在本地或其他可信管理终端中，使用 GitHub CLI 创建 `production` Environment：
+在本地或其他可信管理终端使用 GitHub CLI（`gh`）检查 GHCR Package、配置 Environment 和操作 Pull Request。首次使用时，按照 [GitHub CLI 官方安装说明](https://github.com/cli/cli#installation) 为当前操作系统完成安装。安装完成后用如下命令通过浏览器登录 GitHub 账号：
 
 ```bash
 gh auth login --web \
   --scopes repo,workflow,write:packages
+```
 
+然后使用 GitHub CLI 创建 `production` Environment：
+
+```bash
 gh api --method PUT \
   repos/janwee-sha/simple-clock-app/environments/production \
   -F wait_timer=0 \
@@ -758,3 +762,5 @@ exit
 12.  setup-node Action：[https://github.com/actions/setup-node](https://github.com/actions/setup-node)
 13.  Nginx Docker 官方镜像：[https://hub.docker.com/_/nginx](https://hub.docker.com/_/nginx)
 14.  GitHub CLI 手册：[https://cli.github.com/manual/](https://cli.github.com/manual/)
+15.  GitHub CLI 安装说明：[https://github.com/cli/cli#installation](https://github.com/cli/cli#installation)
+16.  `gh auth login` 命令：[https://cli.github.com/manual/gh_auth_login](https://cli.github.com/manual/gh_auth_login)
