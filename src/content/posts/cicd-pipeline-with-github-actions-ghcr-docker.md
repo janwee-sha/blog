@@ -384,10 +384,31 @@ ssh-keygen -t ed25519 -N '' \
 
 命令会在当前目录生成私钥 `github-actions-deploy` 和公钥 `github-actions-deploy.pub`。不要把私钥提交到仓库，也不要发送给部署主机。
 
-只将公钥传到部署主机，把它写入 `/home/deploy/.ssh/authorized_keys`，并在公钥前添加以下选项；将 `<PUBLIC_KEY>` 替换为 `github-actions-deploy.pub` 中的完整公钥：
+在部署主机上切换到 `deploy` 用户：
+
+```bash
+sudo -iu deploy
+```
+
+然后将将公钥内容写入 `/home/deploy/.ssh/authorized_keys` 文件：
+
+```bash
+install -d -m 700 ~/.ssh
+touch ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys
+vim ~/.ssh/authorized_keys
+```
+
+在 Vim 中添加以下一行；将 `<PUBLIC_KEY>` 替换为 `github-actions-deploy.pub` 中的完整公钥：
 
 ```text title="/home/deploy/.ssh/authorized_keys"
 restrict,command="/opt/simple-clock-app/ssh-deploy-wrapper.sh" ssh-ed25519 <PUBLIC_KEY> github-actions-deploy
+```
+
+保存并退出 Vim 后，返回管理员账户：
+
+```bash
+exit
 ```
 
 `restrict` 会关闭端口转发、代理转发、X11 和 PTY，`command` 则忽略客户端请求的实际程序，只运行包装脚本。只有格式正确的 `deploy ghcr.io/...@sha256:...` 命令才能进入部署脚本，这个限制比仅依赖工作流里的字符串校验更可靠。
@@ -403,7 +424,7 @@ ssh-keyscan -p "$DEPLOY_PORT" -t ed25519 "$DEPLOY_HOST" \
 ssh-keygen -lf deploy-known-hosts
 ```
 
-通过云服务商控制台或其他可信通道，将这个指纹与部署主机 `/etc/ssh/ssh_host_ed25519_key.pub` 的指纹进行比对。确认一致后，保留私钥 `github-actions-deploy` 和主机公钥记录 `deploy-known-hosts`，下一节会把它们上传到 GitHub。不要在工作流中使用 `StrictHostKeyChecking=no` 绕过主机身份验证。
+保留私钥 `github-actions-deploy` 和主机公钥记录 `deploy-known-hosts`，下一节会把它们上传到 GitHub。不要在工作流中使用 `StrictHostKeyChecking=no` 绕过主机身份验证。
 
 `DEPLOY_HOST` 必须是 GitHub 托管 Runner 能够直接访问 SSH 端口的主机名或 IP 地址。使用域名时，应确认它解析到部署主机，并且中间没有只支持 Web 流量的代理。
 
