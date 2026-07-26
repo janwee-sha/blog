@@ -187,7 +187,7 @@ exit
 
 GitHub Actions 发布与当前仓库关联的镜像时，可以使用自动生成的 `GITHUB_TOKEN`。这个令牌在每个 Job 开始时由 GitHub 签发，Job 结束后自动失效；下一次运行会得到新令牌，不需要手动更新。
 
-部署主机不在 Actions Job 内，不能复用这个短期令牌。如果镜像是私有的，需要创建一个只包含 `read:packages` 权限的 Personal Access Token（classic）：
+部署主机不在 Actions Job 内，不能复用这个短期令牌。如果让镜像保持公开，可跳过下面的登录 GHCR 的步骤；如果准备让镜像保持私有，需要创建一个只包含 `read:packages` 权限的 Personal Access Token（classic）：
 
 1. 登录用于拉取镜像的 GitHub 账户，进入 **Settings → Developer settings → Personal access tokens → Tokens (classic)**。
 2. 点击 **Generate new token → Generate new token (classic)**。
@@ -204,22 +204,7 @@ exit
 ```
 
 > [!NOTE]
-> 将命令中的 `janwee-sha` 替换为你自己的 GitHub 账号。
-
-GHCR 的个人访问令牌需要自行轮换。`docker login` 默认可能把凭据保存在用户目录的 Docker 配置中；生产环境应考虑使用 Docker credential helper。如果镜像被设置为公开，则部署主机可以匿名拉取，无需保存这个令牌。
-
-新建 Package 的可见性需要在首次发布后确认。公开镜像的可靠启动顺序是：先让 `production` Environment 的 reviewer 暂停部署，等待 `publish` Job 创建 Package，再用 GitHub CLI 检查并按需切换可见性，最后批准部署：
-
-```bash
-gh api /user/packages/container/simple-clock-app --jq .visibility
-
-# 仅在上一条命令返回 private 时执行
-gh api --method PATCH \
-  /user/packages/container/simple-clock-app \
-  -f visibility=public
-```
-
-当 API 返回 `public` 时，部署主机可以匿名拉取镜像；返回 `private` 时，应按照前文为部署主机配置只读凭据。仓库的可见性与 Package 的可见性是两个独立设置，应以 Package API 的结果为准。
+> 将命令中的 `janwee-sha` 替换为你自己的 GitHub 账号。 GHCR 的个人访问令牌需要自行轮换；`docker login` 默认可能把凭据保存在用户目录的 Docker 配置中，生产环境应考虑使用 Docker credential helper。
 
 ## 06. 编写 Docker Compose 配置
 
@@ -491,7 +476,7 @@ gh secret list --env production \
 
 最后一条命令只会列出 Secret 名称和更新时间，不会显示原始内容。确认 `DEPLOY_SSH_KEY` 和 `DEPLOY_KNOWN_HOSTS` 都已存在后，还可以在仓库网页的 **Settings → Environments → production → Environment secrets** 中核对；也可以在这里点击 **Add environment secret**，以相同名称分别粘贴两个文件的完整内容，完成等价的网页操作。上传成功并验证受限公钥可用后，删除本地或其他可信管理终端上的临时私钥副本。
 
-将 Environment 的部署分支限制为 `main`。如果当前仓库和 GitHub 套餐支持 Required reviewers，建议至少在首次发布时要求人工批准：这样可以先确认 GHCR Package 可匿名拉取，再放行生产部署。部署 Job 在保护规则通过前无法读取 Environment Secrets。
+将 Environment 的部署分支限制为 `main`。如果当前仓库和 GitHub 套餐支持 Required reviewers，建议至少在首次发布时要求人工批准：这样可以等待 `publish` 创建 GHCR Package，根据选择确认私有镜像凭据或完成公开可见性设置，再放行生产部署。部署 Job 在保护规则通过前无法读取 Environment Secrets。
 
 ## 09. 编写 GitHub Actions 工作流
 
@@ -652,7 +637,7 @@ gh pr ready
 gh pr merge --squash
 ```
 
-`Test and build` Job 成功后，合并触发 `publish`。首次部署在 reviewer 处暂停时，先按 5.1 节确认 Package 为公开，再通过 API 批准对应 Environment：
+`Test and build` Job 成功后，合并触发 `publish`。首次部署在 reviewer 处暂停时，通过 API 批准对应 Environment：
 
 ```bash
 RUN_ID="$(gh run list --workflow pipeline.yml \
