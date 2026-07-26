@@ -195,13 +195,11 @@ GitHub Actions 发布与当前仓库关联的镜像时，可以使用自动生�
 4. 只勾选 `read:packages`。创建令牌的账户本身还必须拥有目标 Package 的读取权限。
 5. 点击 **Generate token** 并立即复制令牌；GitHub 离开页面后不会再次显示完整内容。如果 Package 属于启用了 SAML SSO 的组织，还需为该组织点击 **Configure SSO → Authorize**。
 
-通过密码管理器或其他加密通道把令牌传到部署主机，在 `GHCR token:` 提示后粘贴。`read -s` 不会回显输入，也不会把令牌直接写进命令历史。在部署主机切换到 `deploy` 的登录 shell，登录 GHCR 后返回管理员账户：
+通过密码管理器或其他加密通道把令牌传到部署主机。在部署主机切换到 `deploy` 的登录 shell，执行 `docker login`，并在 `Password:` 提示后粘贴令牌；交互式输入不会把令牌写进命令参数或 shell 历史。登录成功后返回管理员账户：
 
 ```bash
 sudo -iu deploy
-read -r -s -p "GHCR token: " CR_PAT
-printf '%s' "$CR_PAT" | docker login ghcr.io -u janwee-sha --password-stdin
-unset CR_PAT
+docker login ghcr.io -u janwee-sha
 exit
 ```
 
