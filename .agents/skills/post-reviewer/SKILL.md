@@ -1,6 +1,6 @@
 ---
 name: post-reviewer
-description: 交互式审阅并修复此 Astro/Fuwari 博客中 src/content/posts 下的一篇或全部 Markdown/MDX 文章。当用户要求 review/审阅、format/格式化、proofread/校对、lint/检查、normalize/规范化或 validate/验证博客文章时使用；覆盖 Markdown 与 Astro frontmatter、文件名/slug 的英文语法和语义、中英文间距、错别字与语法、一致性、图片与链接以及 publication readiness/发布就绪度。始终先检查并展示修复建议和需判断的问题，等待用户反馈后仅应用获批改动，再执行验证。接受 scope=all，或 slug、文件名、仓库相对路径。
+description: 交互式审阅并修改本博客站点仓库中 src/content/posts 下的一篇或全部 Markdown 文章。当用户要求 review/审阅、format/格式化、proofread/校对、lint/检查、normalize/规范化或 validate/验证博客文章时使用；覆盖 Markdown 与 Astro frontmatter、文件名/slug 的英文语法和语义、中英文间距、错别字与语法、一致性、图片与链接以及 publication readiness/发布就绪度。始终先检查并展示修复建议和需判断的问题，等待用户反馈后仅应用获批改动，再执行验证。接受 scope=all，或 slug、文件名、仓库相对路径。
 ---
 
 # Post Reviewer

@@ -79,7 +79,7 @@ npm run build
 
 与 `npm install` 相比，`npm ci` 更稳定、可复现，通常也更快，因此更适合用作 CI/CD。
 
-`npm test` 使用 Vitest 和 jsdom 运行 `src/App.test.tsx` 中的 3 个测试，验证时钟表盘、日期时间和定时刷新行为。`npm run build` 先执行 TypeScript 类型检查，再让 Vite 生成 `dist/`。实际项目还应根据功能复杂度补充端到端测试和浏览器兼容性验证。
+`npm test` 使用 Vitest 和 jsdom 运行 `src/App.test.tsx` 中的 3 个测试，验证时钟表盘、日期时间和定时刷新行为。`npm run build` 先执行 TypeScript 类型检查，再让 Vite 生成 `dist/`。
 
 ## 04. 构建应用镜像
 
@@ -187,7 +187,7 @@ exit
 
 GitHub Actions 发布与当前仓库关联的镜像时，可以使用自动生成的 `GITHUB_TOKEN`。这个令牌在每个 Job 开始时由 GitHub 签发，Job 结束后自动失效；下一次运行会得到新令牌，不需要手动更新。
 
-部署主机不在 Actions Job 内，不能复用这个短期令牌。如果镜像是私有的，需要创建一个只包含 `read:packages` 权限的 Personal Access Token（classic）：
+部署主机不在 Actions Job 内，不能复用这个短期令牌。如果让镜像保持公开，可跳过下面的登录 GHCR 的步骤；如果准备让镜像保持私有，需要创建一个只包含 `read:packages` 权限的 Personal Access Token（classic）：
 
 1. 登录用于拉取镜像的 GitHub 账户，进入 **Settings → Developer settings → Personal access tokens → Tokens (classic)**。
 2. 点击 **Generate new token → Generate new token (classic)**。
@@ -195,33 +195,16 @@ GitHub Actions 发布与当前仓库关联的镜像时，可以使用自动生�
 4. 只勾选 `read:packages`。创建令牌的账户本身还必须拥有目标 Package 的读取权限。
 5. 点击 **Generate token** 并立即复制令牌；GitHub 离开页面后不会再次显示完整内容。如果 Package 属于启用了 SAML SSO 的组织，还需为该组织点击 **Configure SSO → Authorize**。
 
-通过密码管理器或其他加密通道把令牌传到部署主机，在 `GHCR token:` 提示后粘贴。`read -s` 不会回显输入，也不会把令牌直接写进命令历史。在部署主机切换到 `deploy` 的登录 shell，登录 GHCR 后返回管理员账户：
+通过密码管理器或其他加密通道把令牌传到部署主机。在部署主机切换到 `deploy` 的登录 shell，执行 `docker login`，并在 `Password:` 提示后粘贴令牌；交互式输入不会把令牌写进命令参数或 shell 历史。登录成功后返回管理员账户：
 
 ```bash
 sudo -iu deploy
-read -r -s -p "GHCR token: " CR_PAT
-printf '%s' "$CR_PAT" | docker login ghcr.io -u janwee-sha --password-stdin
-unset CR_PAT
+docker login ghcr.io -u janwee-sha
 exit
 ```
 
 > [!NOTE]
-> 将命令中的 `janwee-sha` 替换为你自己的 GitHub 账号。
-
-GHCR 的个人访问令牌需要自行轮换。`docker login` 默认可能把凭据保存在用户目录的 Docker 配置中；生产环境应考虑使用 Docker credential helper。如果镜像被设置为公开，则部署主机可以匿名拉取，无需保存这个令牌。
-
-新建 Package 的可见性需要在首次发布后确认。公开镜像的可靠启动顺序是：先让 `production` Environment 的 reviewer 暂停部署，等待 `publish` Job 创建 Package，再用 GitHub CLI 检查并按需切换可见性，最后批准部署：
-
-```bash
-gh api /user/packages/container/simple-clock-app --jq .visibility
-
-# 仅在上一条命令返回 private 时执行
-gh api --method PATCH \
-  /user/packages/container/simple-clock-app \
-  -f visibility=public
-```
-
-当 API 返回 `public` 时，部署主机可以匿名拉取镜像；返回 `private` 时，应按照前文为部署主机配置只读凭据。仓库的可见性与 Package 的可见性是两个独立设置，应以 Package API 的结果为准。
+> 将命令中的 `janwee-sha` 替换为你自己的 GitHub 账号。GHCR 的个人访问令牌需要自行轮换；`docker login` 默认可能把凭据保存在用户目录的 Docker 配置中，生产环境应考虑使用 Docker credential helper。
 
 ## 06. 编写 Docker Compose 配置
 
@@ -248,15 +231,6 @@ services:
 `IMAGE_REF` 不直接写死在 Compose 文件中，而是由部署脚本写入同目录的 `.env`。端口只绑定到主机回环地址，适合由 Nginx、Caddy 或其他反向代理提供 HTTPS；在部署主机上可以通过 `http://127.0.0.1:7100` 验证服务。
 
 Compose 会继承镜像中的 `HEALTHCHECK`。执行 `docker compose up --wait` 时，它会等待容器进入 `healthy` 状态，而不是只确认容器进程已经启动。
-
-`--wait` 和 `--wait-timeout` 不是旧版 Compose 的通用选项。部署前应确认当前插件支持它们，否则脚本会在启动前就失败：
-
-```bash
-docker compose version
-docker compose up --wait
-```
-
-如果帮助信息中没有这些选项，应先升级 Compose 插件，而不是删除等待健康状态的逻辑。
 
 ## 07. 编写部署与回滚脚本
 
@@ -334,7 +308,12 @@ fi
 echo "Deployment failed." >&2
 docker compose logs --no-color --tail 100 app || true
 
-if [[ -z "$previous_ref" || "$previous_ref" == "$new_ref" ]]; then
+if [[ "$previous_ref" == "$new_ref" ]]; then
+    echo "No distinct previous image is available for rollback; leaving the current Compose state unchanged." >&2
+    exit 1
+fi
+
+if [[ -z "$previous_ref" ]]; then
     echo "No previous image is available for rollback." >&2
     docker compose down || true
     rm -f .env
@@ -357,7 +336,7 @@ exit 1
 
 脚本只接受固定 GHCR 仓库下的 SHA-256 digest，避免把任意字符串拼接到远程命令中。`.env` 通过临时文件和 `mv` 原子替换；`flock` 则避免手动部署与自动部署同时修改状态。
 
-部署失败时，脚本会打印新容器最后 100 行日志并尝试恢复原镜像。即使回滚成功，它仍返回非零状态，这样 GitHub Actions 不会把一次失败后回滚的发布错误标记为成功。首次部署还没有旧版本，如果新容器不健康，脚本会停止它并等待人工修复。
+部署失败时，脚本会打印新容器最后 100 行日志并尝试恢复原镜像。即使回滚成功，它仍返回非零状态，这样 GitHub Actions 不会把一次失败后回滚的发布错误标记为成功。首次部署还没有旧版本，如果新容器不健康，脚本会停止它并等待人工修复；重新部署同一 digest 失败时没有可区分的旧镜像，脚本会保留当前 Compose 状态供检查，避免因拉取等临时故障主动停止原有服务。
 
 ### 7.1. 限制部署密钥可以执行的命令
 
@@ -405,10 +384,31 @@ ssh-keygen -t ed25519 -N '' \
 
 命令会在当前目录生成私钥 `github-actions-deploy` 和公钥 `github-actions-deploy.pub`。不要把私钥提交到仓库，也不要发送给部署主机。
 
-只将公钥传到部署主机，把它写入 `/home/deploy/.ssh/authorized_keys`，并在公钥前添加以下选项；将 `<PUBLIC_KEY>` 替换为 `github-actions-deploy.pub` 中的完整公钥：
+在部署主机上切换到 `deploy` 用户：
+
+```bash
+sudo -iu deploy
+```
+
+然后将将公钥内容写入 `/home/deploy/.ssh/authorized_keys` 文件：
+
+```bash
+install -d -m 700 ~/.ssh
+touch ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys
+vim ~/.ssh/authorized_keys
+```
+
+在 Vim 中添加以下一行；将 `<PUBLIC_KEY>` 替换为 `github-actions-deploy.pub` 中的完整公钥：
 
 ```text title="/home/deploy/.ssh/authorized_keys"
 restrict,command="/opt/simple-clock-app/ssh-deploy-wrapper.sh" ssh-ed25519 <PUBLIC_KEY> github-actions-deploy
+```
+
+保存并退出 Vim 后，返回管理员账户：
+
+```bash
+exit
 ```
 
 `restrict` 会关闭端口转发、代理转发、X11 和 PTY，`command` 则忽略客户端请求的实际程序，只运行包装脚本。只有格式正确的 `deploy ghcr.io/...@sha256:...` 命令才能进入部署脚本，这个限制比仅依赖工作流里的字符串校验更可靠。
@@ -424,7 +424,7 @@ ssh-keyscan -p "$DEPLOY_PORT" -t ed25519 "$DEPLOY_HOST" \
 ssh-keygen -lf deploy-known-hosts
 ```
 
-通过云服务商控制台或其他可信通道，将这个指纹与部署主机 `/etc/ssh/ssh_host_ed25519_key.pub` 的指纹进行比对。确认一致后，保留私钥 `github-actions-deploy` 和主机公钥记录 `deploy-known-hosts`，下一节会把它们上传到 GitHub。不要在工作流中使用 `StrictHostKeyChecking=no` 绕过主机身份验证。
+保留私钥 `github-actions-deploy` 和主机公钥记录 `deploy-known-hosts`，下一节会把它们上传到 GitHub。不要在工作流中使用 `StrictHostKeyChecking=no` 绕过主机身份验证。
 
 `DEPLOY_HOST` 必须是 GitHub 托管 Runner 能够直接访问 SSH 端口的主机名或 IP 地址。使用域名时，应确认它解析到部署主机，并且中间没有只支持 Web 流量的代理。
 
@@ -434,7 +434,7 @@ ssh-keygen -lf deploy-known-hosts
 
 ```bash
 gh auth login --web \
-  --scopes repo,workflow,write:packages
+  --scopes repo,workflow,read:packages
 ```
 
 然后使用 GitHub CLI 创建 `production` Environment：
@@ -493,7 +493,7 @@ gh secret list --env production \
 
 最后一条命令只会列出 Secret 名称和更新时间，不会显示原始内容。确认 `DEPLOY_SSH_KEY` 和 `DEPLOY_KNOWN_HOSTS` 都已存在后，还可以在仓库网页的 **Settings → Environments → production → Environment secrets** 中核对；也可以在这里点击 **Add environment secret**，以相同名称分别粘贴两个文件的完整内容，完成等价的网页操作。上传成功并验证受限公钥可用后，删除本地或其他可信管理终端上的临时私钥副本。
 
-将 Environment 的部署分支限制为 `main`。如果当前仓库和 GitHub 套餐支持 Required reviewers，建议至少在首次发布时要求人工批准：这样可以先确认 GHCR Package 可匿名拉取，再放行生产部署。部署 Job 在保护规则通过前无法读取 Environment Secrets。
+将 Environment 的部署分支限制为 `main`。如果当前仓库和 GitHub 套餐支持 Required reviewers，建议至少在首次发布时要求人工批准：这样可以等待 `publish` 创建 GHCR Package，根据选择确认私有镜像凭据或完成公开可见性设置，再放行生产部署。部署 Job 在保护规则通过前无法读取 Environment Secrets。
 
 ## 09. 编写 GitHub Actions 工作流
 
@@ -507,6 +507,10 @@ on:
     branches: [main]
   push:
     branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   REGISTRY: ghcr.io
@@ -585,9 +589,6 @@ jobs:
     environment:
       name: production
       url: ${{ vars.APP_URL }}
-    concurrency:
-      group: production
-      cancel-in-progress: false
     steps:
       - name: Configure SSH
         env:
@@ -638,13 +639,15 @@ jobs:
 
 `test` Job 同时服务于 Pull Request 和 `main` 分支，按锁文件安装依赖后执行单元测试和生产构建。`publish` 只在 `push` 事件中运行，因此 Pull Request 不会获得 `packages: write` 权限，也接触不到生产凭据。发布 Job 使用短期 `GITHUB_TOKEN` 登录 GHCR，无需创建额外的写入令牌；应用构建由 Dockerfile 的第一阶段完成，最终镜像只包含 Nginx 和静态文件。
 
+工作流级 `concurrency` 以工作流名称和 Git ref 分组：同一 Pull Request 的新运行会取消旧运行；`main` 的生产运行不会被中途取消，并且测试、发布和部署作为一个整体串行执行，避免多个推送交错更新 `main` 标签或部署 digest。
+
 镜像同时带有完整 Git commit SHA 标签和便于查看的 `main` 标签。标签可以移动，因此部署 Job 没有使用标签，而是读取 `build-push-action` 返回的 digest，并让生产主机拉取 `ghcr.io/janwee-sha/simple-clock-app@sha256:...`。这样即使某个标签后来被覆盖，已经记录的部署版本仍然指向相同镜像内容。
 
 工作流把外部 Action 固定到相应主版本标签指向的完整 commit SHA，注释则保留可读的主版本号。完整 SHA 不会像可移动标签一样在不知情的情况下指向其他代码；同时应使用 Dependabot 持续更新这些 SHA，而不是永久停留在当前提交。
 
 ## 10. 首次部署与验证
 
-把 `Dockerfile`、`.dockerignore`、`.github/workflows/pipeline.yml` 和 `deploy/` 下的主机配置提交到特性分支。使用 GitHub CLI 创建 PR、等待 CI 并合并：
+把 `Dockerfile`、`.dockerignore` 和 `.github/workflows/pipeline.yml` 提交到特性分支。部署脚本和包装脚本已在前文直接安装到部署主机，不属于本段需要提交的仓库文件。使用 GitHub CLI 创建 PR、等待 CI 并合并：
 
 ```bash
 gh pr create --draft --base main \
@@ -654,7 +657,7 @@ gh pr ready
 gh pr merge --squash
 ```
 
-`Test and build` Job 成功后，合并触发 `publish`。首次部署在 reviewer 处暂停时，先按 5.1 节确认 Package 为公开，再通过 API 批准对应 Environment：
+`Test and build` Job 成功后，合并触发 `publish`。首次部署在 reviewer 处暂停时，通过 API 批准对应 Environment：
 
 ```bash
 RUN_ID="$(gh run list --workflow pipeline.yml \
@@ -756,11 +759,13 @@ exit
 6.  GitHub Actions 安全使用指南：[https://docs.github.com/en/actions/reference/security/secure-use](https://docs.github.com/en/actions/reference/security/secure-use)
 7.  Docker Build 的 GitHub Actions 集成：[https://docs.docker.com/build/ci/github-actions/](https://docs.docker.com/build/ci/github-actions/)
 8.  Docker Engine 安装指南：[https://docs.docker.com/engine/install/](https://docs.docker.com/engine/install/)
-9.  Docker Compose 变量插值：[https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/](https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/)
-10.  `docker compose up` 命令：[https://docs.docker.com/reference/cli/docker/compose/up/](https://docs.docker.com/reference/cli/docker/compose/up/)
-11.  simple-clock-app 示例项目：[https://github.com/janwee-sha/simple-clock-app](https://github.com/janwee-sha/simple-clock-app)
-12.  setup-node Action：[https://github.com/actions/setup-node](https://github.com/actions/setup-node)
-13.  Nginx Docker 官方镜像：[https://hub.docker.com/_/nginx](https://hub.docker.com/_/nginx)
-14.  GitHub CLI 手册：[https://cli.github.com/manual/](https://cli.github.com/manual/)
-15.  GitHub CLI 安装说明：[https://github.com/cli/cli#installation](https://github.com/cli/cli#installation)
-16.  `gh auth login` 命令：[https://cli.github.com/manual/gh_auth_login](https://cli.github.com/manual/gh_auth_login)
+9.  Docker Compose 插件安装指南：[https://docs.docker.com/compose/install/linux/](https://docs.docker.com/compose/install/linux/)
+10.  Ubuntu OpenSSH Server 安装指南：[https://documentation.ubuntu.com/server/how-to/security/openssh-server/](https://documentation.ubuntu.com/server/how-to/security/openssh-server/)
+11.  Docker Compose 变量插值：[https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/](https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/)
+12.  `docker compose up` 命令：[https://docs.docker.com/reference/cli/docker/compose/up/](https://docs.docker.com/reference/cli/docker/compose/up/)
+13.  simple-clock-app 示例项目：[https://github.com/janwee-sha/simple-clock-app](https://github.com/janwee-sha/simple-clock-app)
+14.  setup-node Action：[https://github.com/actions/setup-node](https://github.com/actions/setup-node)
+15.  Nginx Docker 官方镜像：[https://hub.docker.com/_/nginx](https://hub.docker.com/_/nginx)
+16.  GitHub CLI 手册：[https://cli.github.com/manual/](https://cli.github.com/manual/)
+17.  GitHub CLI 安装说明：[https://github.com/cli/cli#installation](https://github.com/cli/cli#installation)
+18.  `gh auth login` 命令：[https://cli.github.com/manual/gh_auth_login](https://cli.github.com/manual/gh_auth_login)
