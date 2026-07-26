@@ -232,15 +232,6 @@ services:
 
 Compose 会继承镜像中的 `HEALTHCHECK`。执行 `docker compose up --wait` 时，它会等待容器进入 `healthy` 状态，而不是只确认容器进程已经启动。
 
-`--wait` 和 `--wait-timeout` 不是旧版 Compose 的通用选项。部署前应确认当前插件支持它们，否则脚本会在启动前就失败：
-
-```bash
-docker compose version
-docker compose up --help
-```
-
-如果帮助信息中没有这些选项，应先升级 Compose 插件，而不是删除等待健康状态的逻辑。
-
 ## 07. 编写部署与回滚脚本
 
 在 `/opt/simple-clock-app` 中创建 `deploy.sh`：
