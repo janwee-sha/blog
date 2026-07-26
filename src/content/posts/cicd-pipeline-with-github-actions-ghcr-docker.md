@@ -204,7 +204,7 @@ exit
 ```
 
 > [!NOTE]
-> 将命令中的 `janwee-sha` 替换为你自己的 GitHub 账号。 GHCR 的个人访问令牌需要自行轮换；`docker login` 默认可能把凭据保存在用户目录的 Docker 配置中，生产环境应考虑使用 Docker credential helper。
+> 将命令中的 `janwee-sha` 替换为你自己的 GitHub 账号。GHCR 的个人访问令牌需要自行轮换；`docker login` 默认可能把凭据保存在用户目录的 Docker 配置中，生产环境应考虑使用 Docker credential helper。
 
 ## 06. 编写 Docker Compose 配置
 
@@ -236,7 +236,7 @@ Compose 会继承镜像中的 `HEALTHCHECK`。执行 `docker compose up --wait` 
 
 ```bash
 docker compose version
-docker compose up --wait
+docker compose up --help
 ```
 
 如果帮助信息中没有这些选项，应先升级 Compose 插件，而不是删除等待健康状态的逻辑。
@@ -317,7 +317,12 @@ fi
 echo "Deployment failed." >&2
 docker compose logs --no-color --tail 100 app || true
 
-if [[ -z "$previous_ref" || "$previous_ref" == "$new_ref" ]]; then
+if [[ "$previous_ref" == "$new_ref" ]]; then
+    echo "No distinct previous image is available for rollback; leaving the current Compose state unchanged." >&2
+    exit 1
+fi
+
+if [[ -z "$previous_ref" ]]; then
     echo "No previous image is available for rollback." >&2
     docker compose down || true
     rm -f .env
@@ -340,7 +345,7 @@ exit 1
 
 脚本只接受固定 GHCR 仓库下的 SHA-256 digest，避免把任意字符串拼接到远程命令中。`.env` 通过临时文件和 `mv` 原子替换；`flock` 则避免手动部署与自动部署同时修改状态。
 
-部署失败时，脚本会打印新容器最后 100 行日志并尝试恢复原镜像。即使回滚成功，它仍返回非零状态，这样 GitHub Actions 不会把一次失败后回滚的发布错误标记为成功。首次部署还没有旧版本，如果新容器不健康，脚本会停止它并等待人工修复。
+部署失败时，脚本会打印新容器最后 100 行日志并尝试恢复原镜像。即使回滚成功，它仍返回非零状态，这样 GitHub Actions 不会把一次失败后回滚的发布错误标记为成功。首次部署还没有旧版本，如果新容器不健康，脚本会停止它并等待人工修复；重新部署同一 digest 失败时没有可区分的旧镜像，脚本会保留当前 Compose 状态供检查，避免因拉取等临时故障主动停止原有服务。
 
 ### 7.1. 限制部署密钥可以执行的命令
 
@@ -417,7 +422,7 @@ ssh-keygen -lf deploy-known-hosts
 
 ```bash
 gh auth login --web \
-  --scopes repo,workflow,write:packages
+  --scopes repo,workflow,read:packages
 ```
 
 然后使用 GitHub CLI 创建 `production` Environment：
@@ -490,6 +495,10 @@ on:
     branches: [main]
   push:
     branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   REGISTRY: ghcr.io
@@ -568,9 +577,6 @@ jobs:
     environment:
       name: production
       url: ${{ vars.APP_URL }}
-    concurrency:
-      group: production
-      cancel-in-progress: false
     steps:
       - name: Configure SSH
         env:
@@ -621,13 +627,15 @@ jobs:
 
 `test` Job 同时服务于 Pull Request 和 `main` 分支，按锁文件安装依赖后执行单元测试和生产构建。`publish` 只在 `push` 事件中运行，因此 Pull Request 不会获得 `packages: write` 权限，也接触不到生产凭据。发布 Job 使用短期 `GITHUB_TOKEN` 登录 GHCR，无需创建额外的写入令牌；应用构建由 Dockerfile 的第一阶段完成，最终镜像只包含 Nginx 和静态文件。
 
+工作流级 `concurrency` 以工作流名称和 Git ref 分组：同一 Pull Request 的新运行会取消旧运行；`main` 的生产运行不会被中途取消，并且测试、发布和部署作为一个整体串行执行，避免多个推送交错更新 `main` 标签或部署 digest。
+
 镜像同时带有完整 Git commit SHA 标签和便于查看的 `main` 标签。标签可以移动，因此部署 Job 没有使用标签，而是读取 `build-push-action` 返回的 digest，并让生产主机拉取 `ghcr.io/janwee-sha/simple-clock-app@sha256:...`。这样即使某个标签后来被覆盖，已经记录的部署版本仍然指向相同镜像内容。
 
 工作流把外部 Action 固定到相应主版本标签指向的完整 commit SHA，注释则保留可读的主版本号。完整 SHA 不会像可移动标签一样在不知情的情况下指向其他代码；同时应使用 Dependabot 持续更新这些 SHA，而不是永久停留在当前提交。
 
 ## 10. 首次部署与验证
 
-把 `Dockerfile`、`.dockerignore`、`.github/workflows/pipeline.yml` 和 `deploy/` 下的主机配置提交到特性分支。使用 GitHub CLI 创建 PR、等待 CI 并合并：
+把 `Dockerfile`、`.dockerignore` 和 `.github/workflows/pipeline.yml` 提交到特性分支。部署脚本和包装脚本已在前文直接安装到部署主机，不属于本段需要提交的仓库文件。使用 GitHub CLI 创建 PR、等待 CI 并合并：
 
 ```bash
 gh pr create --draft --base main \
@@ -739,11 +747,13 @@ exit
 6.  GitHub Actions 安全使用指南：[https://docs.github.com/en/actions/reference/security/secure-use](https://docs.github.com/en/actions/reference/security/secure-use)
 7.  Docker Build 的 GitHub Actions 集成：[https://docs.docker.com/build/ci/github-actions/](https://docs.docker.com/build/ci/github-actions/)
 8.  Docker Engine 安装指南：[https://docs.docker.com/engine/install/](https://docs.docker.com/engine/install/)
-9.  Docker Compose 变量插值：[https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/](https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/)
-10.  `docker compose up` 命令：[https://docs.docker.com/reference/cli/docker/compose/up/](https://docs.docker.com/reference/cli/docker/compose/up/)
-11.  simple-clock-app 示例项目：[https://github.com/janwee-sha/simple-clock-app](https://github.com/janwee-sha/simple-clock-app)
-12.  setup-node Action：[https://github.com/actions/setup-node](https://github.com/actions/setup-node)
-13.  Nginx Docker 官方镜像：[https://hub.docker.com/_/nginx](https://hub.docker.com/_/nginx)
-14.  GitHub CLI 手册：[https://cli.github.com/manual/](https://cli.github.com/manual/)
-15.  GitHub CLI 安装说明：[https://github.com/cli/cli#installation](https://github.com/cli/cli#installation)
-16.  `gh auth login` 命令：[https://cli.github.com/manual/gh_auth_login](https://cli.github.com/manual/gh_auth_login)
+9.  Docker Compose 插件安装指南：[https://docs.docker.com/compose/install/linux/](https://docs.docker.com/compose/install/linux/)
+10.  Ubuntu OpenSSH Server 安装指南：[https://documentation.ubuntu.com/server/how-to/security/openssh-server/](https://documentation.ubuntu.com/server/how-to/security/openssh-server/)
+11.  Docker Compose 变量插值：[https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/](https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/)
+12.  `docker compose up` 命令：[https://docs.docker.com/reference/cli/docker/compose/up/](https://docs.docker.com/reference/cli/docker/compose/up/)
+13.  simple-clock-app 示例项目：[https://github.com/janwee-sha/simple-clock-app](https://github.com/janwee-sha/simple-clock-app)
+14.  setup-node Action：[https://github.com/actions/setup-node](https://github.com/actions/setup-node)
+15.  Nginx Docker 官方镜像：[https://hub.docker.com/_/nginx](https://hub.docker.com/_/nginx)
+16.  GitHub CLI 手册：[https://cli.github.com/manual/](https://cli.github.com/manual/)
+17.  GitHub CLI 安装说明：[https://github.com/cli/cli#installation](https://github.com/cli/cli#installation)
+18.  `gh auth login` 命令：[https://cli.github.com/manual/gh_auth_login](https://cli.github.com/manual/gh_auth_login)
