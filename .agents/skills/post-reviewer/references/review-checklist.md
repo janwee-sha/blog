@@ -93,6 +93,14 @@
 
 - 检查明显的事实自相矛盾、过时的 cross-references、重复 headings/paragraphs、未定义 abbreviations，以及文中从未引用的 references。
 - 检查 code block language labels 与可见语法，但没有足够上下文和授权时，不得重构或“修复”可运行代码。
+- 识别必须由读者按自身环境替换的示例值，例如 IP 地址、域名、账号名称、用户名、仓库名或资源标识符。紧跟承载示例值的代码块添加 `NOTE` admonition。采用以下结构，并将示例文字替换为文章的实际内容：
+
+  ```markdown
+  > [!NOTE]
+  > 将命令中的 `example-user` 替换为你的账号名称。
+  ```
+
+  同一处有多个此类值时，可以合并到一个 `NOTE`，但要逐一说明。将提示缺失、位置错误或指示不明确且替换关系无歧义的情况归为 **Definite repairs（确定性修复）**；无法确定示例值含义或目标值时归为 **Needs user review（需用户复核）**。不要把适用于所有读者的固定常量误判为此类变量。
 - 保留警告、限制、出处、引文与 license-sensitive text。
 - 若发现 secrets、tokens、private hosts、personal data 或 unsafe commands，进行标记；报告中不得重复敏感值。
 - 区分明确错误、可能改进与主观建议。用户回复后，仅应用获批的确定性修复与选中的需判断改动。
