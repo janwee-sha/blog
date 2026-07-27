@@ -449,8 +449,7 @@ gh auth login --web \
 ```bash
 gh api --method PUT \
   repos/janwee-sha/simple-clock-app/environments/production \
-  -F wait_timer=0 \
-  -F prevent_self_review=false
+  -F wait_timer=0
 ```
 
 > [!NOTE]
