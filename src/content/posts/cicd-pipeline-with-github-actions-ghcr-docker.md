@@ -53,7 +53,7 @@ flowchart TB
 
 ![simple-clock-app 显示圆盘时钟、数字时间和日期的运行界面](/uploads/2026/07/simple-clock-app.webp)
 
-我们将以它作为示例搭建我们的 CI/CD 流水线。
+本文将以它为例搭建 CI/CD 管道。
 
 克隆示例仓库：
 
@@ -370,6 +370,7 @@ sudo chmod 750 \
   /opt/simple-clock-app/deploy.sh \
   /opt/simple-clock-app/ssh-deploy-wrapper.sh
 ```
+
 上述指令会赋予 `root` 读、写、执行权限，但仅赋予 `deploy` 用户读、执行权限。这样做的目的，是让 `deploy` 用户可以执行部署脚本，却不能篡改脚本内容；只有 `root` 能修改它们。
 
 ### 7.2. 配置 SSH 部署密钥
@@ -399,7 +400,7 @@ chmod 600 ~/.ssh/authorized_keys
 vim ~/.ssh/authorized_keys
 ```
 
-在 Vim 中添加以下一行:
+在 Vim 中添加以下一行：
 
 ```text title="/home/deploy/.ssh/authorized_keys"
 restrict,command="/opt/simple-clock-app/ssh-deploy-wrapper.sh" <PUBLIC_KEY>
@@ -428,7 +429,7 @@ ssh-keygen -lf deploy-known-hosts
 ```
 
 > [!NOTE]
-> 将脚本中的 `192.0.2.10` 替换为你的部署主机 IP 地址或指向你的部署主机的域名。
+> 将脚本中的 `192.0.2.10` 替换为你的部署主机 IP 地址或指向你的部署主机的域名；如果部署主机使用非默认 SSH 端口，也要相应修改 `DEPLOY_PORT`。
 
 保留私钥 `github-actions-deploy` 和主机公钥记录 `deploy-known-hosts`，下一节会把它们上传到 GitHub。不要在工作流中使用 `StrictHostKeyChecking=no` 绕过主机身份验证。
 
@@ -495,7 +496,7 @@ gh secret list --env production \
 ```
 
 > [!NOTE]
-> 将所有 `--repo janwee-sha/simple-clock-app` 中的 `janwee-sha` 替换为你自己的 GitHub 账号。
+> 将所有 `--repo janwee-sha/simple-clock-app` 中的 `janwee-sha` 替换为你自己的 GitHub 账号，并将 `192.0.2.10`、`22`、`deploy` 和 `https://app.example.com` 分别替换为你的部署主机、SSH 端口、部署用户和应用 URL。
 
 最后一条命令只会列出 Secret 名称和更新时间，不会显示原始内容。确认 `DEPLOY_SSH_KEY` 和 `DEPLOY_KNOWN_HOSTS` 都已存在后，还可以在仓库网页的 **Settings → Environments → production → Environment secrets** 中核对；也可以在这里点击 **Add environment secret**，以相同名称分别粘贴两个文件的完整内容，完成等价的网页操作。上传成功并验证受限公钥可用后，删除本地或其他可信管理终端上的临时私钥副本。
 
@@ -737,7 +738,7 @@ exit
 ```
 
 > [!NOTE]
-> 将镜像引用中的 `janwee-sha` 替换为你自己的 GitHub 账号。
+> 将镜像引用中的 `janwee-sha` 替换为你自己的 GitHub 账号，并将 `<64-character-digest>` 替换为目标镜像的 SHA-256 digest。
 
 脚本仍会执行拉取、健康检查和失败回滚，不应直接编辑 `.env` 后跳过验证。
 

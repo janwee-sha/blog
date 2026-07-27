@@ -65,7 +65,7 @@ pip install "langextract[openai]"
 
 ## 03. 使用本地 Ollama 模型
 
-我先用 Ollama 跑本地模型。这样不用申请 API Key，也方便反复修改提示词；代价是抽取质量更依赖模型本身，运行速度也受本机配置影响。
+我先用 Ollama 跑本地模型。这样不用申请 API key，也方便反复修改提示词；代价是抽取质量更依赖模型本身，运行速度也受本机配置影响。
 
 ### 3.1. 安装并准备模型
 
@@ -181,7 +181,7 @@ Extraction successful!
 
 ## 04. 使用 OpenAI 模型
 
-除了本地模型，LangExtract 也可以接入 OpenAI 模型。使用前需要先配置 OpenAI API Key。推荐将 API Key 保存到环境变量中，避免直接写入代码。
+除了本地模型，LangExtract 也可以接入 OpenAI 模型。使用前需要先配置 OpenAI API key。推荐将 API key 保存到环境变量中，避免直接写入代码。
 
 Linux / macOS：
 
@@ -189,11 +189,17 @@ Linux / macOS：
 export OPENAI_API_KEY="your_api_key"
 ```
 
+> [!NOTE]
+> 将命令中的 `your_api_key` 替换为你的 OpenAI API key。
+
 Windows PowerShell：
 
 ```powershell
 $env:OPENAI_API_KEY="your_api_key"
 ```
+
+> [!NOTE]
+> 将命令中的 `your_api_key` 替换为你的 OpenAI API key。
 
 随后在 Python 项目中创建测试文件，例如 `quick_test_openai.py`：
 

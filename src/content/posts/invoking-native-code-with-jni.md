@@ -23,7 +23,7 @@ lang: "zh_CN"
 
 我们可以使用 JNI（Java Native Interface）来调用本地代码。JNI 是 Java 提供的一种机制，允许 Java 应用程序调用本地代码，也允许本地代码调用 Java 应用程序。本地代码通常使用 C 或 C++ 编写。借助 JNI，Java 可以与底层本地库交互，调用系统级功能，或与其他编程语言集成。
 
-“Talk is cheap. Show me the code.”下面我们动手实践如何在 Java 中使用 JNI。
+“Talk is cheap. Show me the code.” 下面我们动手实践如何在 Java 中使用 JNI。
 
 ## 02. Hello World
 
@@ -151,6 +151,9 @@ jar cfe JNIWithC.jar CCodeCaller -C out .
 java -Djava.library.path=. -jar JNIWithC.jar
 # 或者使用绝对路径加载：System.load("C:\\abs\\path\\hello_from_c.dll")
 ```
+
+> [!NOTE]
+> 将示例中的 `C:\\abs\\path\\hello_from_c.dll` 替换为本地动态库的绝对路径。
 
 ### 2.3. JNI 调用 C++ 代码
 
