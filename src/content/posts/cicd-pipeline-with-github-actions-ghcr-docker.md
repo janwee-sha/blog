@@ -427,6 +427,9 @@ ssh-keyscan -p "$DEPLOY_PORT" -t ed25519 "$DEPLOY_HOST" \
 ssh-keygen -lf deploy-known-hosts
 ```
 
+> [!NOTE]
+> 将脚本中的 `192.0.2.10` 替换为你的部署主机 IP 地址或指向你的部署主机的域名。
+
 保留私钥 `github-actions-deploy` 和主机公钥记录 `deploy-known-hosts`，下一节会把它们上传到 GitHub。不要在工作流中使用 `StrictHostKeyChecking=no` 绕过主机身份验证。
 
 `DEPLOY_HOST` 必须是 GitHub 托管 Runner 能够直接访问 SSH 端口的主机名或 IP 地址。使用域名时，应确认它解析到部署主机，并且中间没有只支持 Web 流量的代理。
