@@ -420,16 +420,12 @@ exit
 完成公钥配置后，回到本地或其他可信管理终端中，按实际 SSH 端口读取主机公钥：
 
 ```bash
-DEPLOY_HOST=192.0.2.10
-DEPLOY_PORT=22
-
-ssh-keyscan -p "$DEPLOY_PORT" -t ed25519 "$DEPLOY_HOST" \
-  > deploy-known-hosts
+ssh-keyscan -p "22" -t ed25519 "192.0.2.10" > deploy-known-hosts
 ssh-keygen -lf deploy-known-hosts
 ```
 
 > [!NOTE]
-> 将脚本中的 `192.0.2.10` 替换为你的部署主机 IP 地址或指向你的部署主机的域名；如果部署主机使用非默认 SSH 端口，也要相应修改 `DEPLOY_PORT`。
+> 将脚本中的 `192.0.2.10` 替换为部署主机 IP 地址或指向部署主机的域名；如果部署主机使用非默认 SSH 端口，也要相应修改 `22` 端口为实际 SSH 端口。
 
 保留私钥 `github-actions-deploy` 和主机公钥记录 `deploy-known-hosts`，下一节会把它们上传到 GitHub。不要在工作流中使用 `StrictHostKeyChecking=no` 绕过主机身份验证。
 
