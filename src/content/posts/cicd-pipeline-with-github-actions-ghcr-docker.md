@@ -437,57 +437,48 @@ ssh-keygen -lf deploy-known-hosts
 
 ## 08. 配置 GitHub Environment
 
-在本地或其他可信管理终端使用 GitHub CLI（`gh`）检查 GHCR Package、配置 Environment 和操作 Pull Request。首次使用时，按照 [GitHub CLI 官方安装说明](https://github.com/cli/cli#installation) 为当前操作系统完成安装。安装完成后用如下命令通过浏览器登录 GitHub 账号：
+打开示例应用的 GitHub 仓库，依次进入 **Settings → Environments**，然后创建生产环境：
 
-```bash
-gh auth login --web \
-  --scopes repo,workflow,read:packages
-```
+1. 点击 **New environment**。
+2. 输入 `production`，再点击 **Configure environment**。
 
-然后使用 GitHub CLI 创建 `production` Environment：
+创建完成后，Environment 列表中会出现 `production`：
 
-```bash
-gh api --method PUT \
-  repos/janwee-sha/simple-clock-app/environments/production \
-  -F wait_timer=0
-```
+![GitHub 仓库 Settings 的 Environments 页面中显示 production Environment](/uploads/2026/07/github-repo-environment.webp)
 
-> [!NOTE]
-> 将 API 路径中的 `janwee-sha` 替换为你自己的 GitHub 账号。
+点击 `production` 进入配置页，然后设置部署保护规则：
 
-设置 Environment Variables：
+1. 如果当前仓库和 GitHub 套餐支持 Required reviewers，勾选 **Required reviewers**，添加至少一名拥有仓库读取权限的用户或团队，再点击 **Save protection rules**。如果触发部署的账号也需要自行批准，不要勾选 **Prevent self-review**；只有安排了其他 reviewer 时才启用它。
+2. 在 **Deployment branches and tags** 下拉框中选择 **Selected branches and tags**，点击 **Add deployment branch or tag rule**，将 **Ref type** 设为 **Branch**，输入 `main`，再点击 **Add rule**。
 
-```bash
-gh variable set DEPLOY_HOST --env production \
-  --repo janwee-sha/simple-clock-app --body 192.0.2.10
-gh variable set DEPLOY_PORT --env production \
-  --repo janwee-sha/simple-clock-app --body 22
-gh variable set DEPLOY_USER --env production \
-  --repo janwee-sha/simple-clock-app --body deploy
-gh variable set APP_URL --env production \
-  --repo janwee-sha/simple-clock-app --body https://app.example.com
-```
+建议至少在首次发布时要求人工批准：这样可以等待 `publish` 创建 GHCR Package，根据选择确认私有镜像凭据或完成公开可见性设置，再放行生产部署。部署 Job 在保护规则通过前无法读取 Environment Secrets。
 
-> [!NOTE]
-> 将 `--repo janwee-sha/simple-clock-app` 里的 `janwee-sha` 替换为你自己的 GitHub 账号，并将 `192.0.2.10`、`22`、`deploy` 和 `https://app.example.com` 分别替换为你的部署主机、SSH 端口、部署用户和应用 URL。
+在 **Environment secrets** 区域点击 **Add environment secret**，依次添加以下两个 Secret：
 
-上传 Environment Secrets：
+| 名称 | 内容 |
+| --- | --- |
+| `DEPLOY_SSH_KEY` | `github-actions-deploy` 私钥的完整内容 |
+| `DEPLOY_KNOWN_HOSTS` | 已核对指纹的 `deploy-known-hosts` 完整内容 |
 
-在保存 `github-actions-deploy` 和 `deploy-known-hosts` 的本地或其他可信管理终端中执行以下命令。`DEPLOY_SSH_KEY` 必须读取私钥 `github-actions-deploy`，不要误用公钥文件 `github-actions-deploy.pub`；重定向符 `<` 会通过标准输入传递文件内容，避免在终端打印私钥：
+`DEPLOY_SSH_KEY` 必须使用私钥 `github-actions-deploy`，不要误用公钥文件 `github-actions-deploy.pub`。GitHub 保存 Secret 后不会再次显示原始内容，因此提交前应核对名称和粘贴内容。
 
-```bash
-gh secret set DEPLOY_SSH_KEY --env production \
-  --repo janwee-sha/simple-clock-app \
-  < github-actions-deploy
-gh secret set DEPLOY_KNOWN_HOSTS --env production \
-  --repo janwee-sha/simple-clock-app \
-  < deploy-known-hosts
-```
+在 **Environment variables** 区域点击 **Add environment variable**，依次添加以下四个 Variable：
+
+| 名称 | 示例 | 用途 |
+| --- | --- | --- |
+| `DEPLOY_HOST` | `192.0.2.10` | 源站 IPv4 或 DNS-only 主机名 |
+| `DEPLOY_PORT` | `22` | SSH 端口 |
+| `DEPLOY_USER` | `deploy` | 专用部署用户 |
+| `APP_URL` | `https://app.example.com` | 显示在 GitHub Deployment 中的应用地址 |
 
 > [!NOTE]
-> 将 `--repo janwee-sha/simple-clock-app` 里的 `janwee-sha` 替换为你自己的 GitHub 账号。
+> 将表中的 `192.0.2.10`、`22`、`deploy` 和 `https://app.example.com` 分别替换为你的部署主机、SSH 端口、部署用户和应用 URL。
 
-将 Environment 的部署分支限制为 `main`。如果当前仓库和 GitHub 套餐支持 Required reviewers，建议至少在首次发布时要求人工批准：这样可以等待 `publish` 创建 GHCR Package，根据选择确认私有镜像凭据或完成公开可见性设置，再放行生产部署。部署 Job 在保护规则通过前无法读取 Environment Secrets。
+完成后，`production` Environment 应包含两个 Secret 和四个 Variable：
+
+![production Environment 页面中已配置两个 Environment Secrets 和四个 Environment Variables](/uploads/2026/07/github-repo-variable-and-secrets.webp)
+
+上传成功并验证受限公钥可用后，删除本地或其他可信管理终端上的临时私钥副本。
 
 ## 09. 编写 GitHub Actions 工作流
 
@@ -641,7 +632,14 @@ jobs:
 
 ## 10. 首次部署与验证
 
-把 `Dockerfile`、`.dockerignore` 和 `.github/workflows/pipeline.yml` 提交到特性分支。部署脚本和包装脚本已在前文直接安装到部署主机，不属于本段需要提交的仓库文件。使用 GitHub CLI 创建 PR、等待 CI 并合并：
+本节使用 GitHub CLI（`gh`）创建和合并 Pull Request、查看 Actions 运行并批准首次部署。首次使用时，按照 [GitHub CLI 官方安装说明](https://github.com/cli/cli#installation) 为当前操作系统完成安装，然后通过浏览器登录 GitHub 账号：
+
+```bash
+gh auth login --web \
+  --scopes repo,workflow,read:packages
+```
+
+把 `Dockerfile`、`.dockerignore` 和 `.github/workflows/pipeline.yml` 提交到特性分支。部署脚本和包装脚本已在前文直接安装到部署主机，不属于本段需要提交的仓库文件。创建 PR、等待 CI 并合并：
 
 ```bash
 gh pr create --draft --base main \
