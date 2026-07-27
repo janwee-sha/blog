@@ -645,8 +645,8 @@ docker ps -a
 `docker compose ps -a` 此时应包含 `simple-clock-app` 正在运行的容器：
 
 ```text
-NAME                     IMAGE                                                                                                         COMMAND                                          SERVICE   CREATED      STATUS                PORTS
-simple-clock-app-app-1   ghcr.io/janwee-sha/simple-clock-app@sha256:c6617a9b2952ed553d05f596458e7e38b9c7414d7089e4c2848f56712fc9bb95   "/docker-entrypoint.sh nginx -g 'daemon off;'"   app       2 days ago   Up 2 days (healthy)   127.0.0.1:7100->80/tcp
+NAME                     IMAGE                                                                                                         COMMAND                                          SERVICE   CREATED          STATUS                    PORTS
+simple-clock-app-app-1   ghcr.io/janwee-sha/simple-clock-app@sha256:cea93970f452047674482aac3dc661845a184dd80a6f37c1df4f44b53d6fd1bf   "/docker-entrypoint.sh nginx -g 'daemon off;'"   app       30 minutes ago   Up 30 minutes (healthy)   127.0.0.1:7100->80/tcp
 ```
 
 `.env` 中应该记录带 digest 的完整镜像引用，而不是 `main` 或 `latest` 标签。也可以在 GitHub 仓库的“Actions”页面查看构建日志，在“Deployments”页面查看生产环境和部署 URL。
