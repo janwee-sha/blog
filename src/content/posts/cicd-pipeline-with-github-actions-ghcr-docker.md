@@ -455,23 +455,7 @@ gh api --method PUT \
 > [!NOTE]
 > 将 API 路径中的 `janwee-sha` 替换为你自己的 GitHub 账号。
 
-添加以下 Environment Variables：
-
-| 名称 | 示例 | 用途 |
-| --- | --- | --- |
-| `DEPLOY_HOST` | `192.0.2.10` | 源站 IPv4 或 DNS-only 主机名 |
-| `DEPLOY_PORT` | `22` | SSH 端口 |
-| `DEPLOY_USER` | `deploy` | 专用部署用户 |
-| `APP_URL` | `https://app.example.com` | 显示在 GitHub Deployment 中的应用地址 |
-
-Environment 创建完成后，在本地或其他可信管理终端中上传以下 Environment Secrets。该终端应保存 `github-actions-deploy` 和 `deploy-known-hosts`；`DEPLOY_SSH_KEY` 必须读取私钥 `github-actions-deploy`，不要误用公钥文件 `github-actions-deploy.pub`：
-
-| 名称 | 内容 |
-| --- | --- |
-| `DEPLOY_SSH_KEY` | `github-actions-deploy` 私钥的完整内容 |
-| `DEPLOY_KNOWN_HOSTS` | 已核对指纹的 `deploy-known-hosts` 完整内容 |
-
-以下命令通过 `--repo` 明确指定目标仓库，因此可以直接在保存上述文件的目录中执行。重定向符 `<` 会把文件的完整内容通过标准输入交给 `gh secret set`，无需在终端打印私钥；GitHub CLI 会在本地使用 Environment 公钥加密内容后上传：
+设置 Environment Variables：
 
 ```bash
 gh variable set DEPLOY_HOST --env production \
@@ -482,22 +466,26 @@ gh variable set DEPLOY_USER --env production \
   --repo janwee-sha/simple-clock-app --body deploy
 gh variable set APP_URL --env production \
   --repo janwee-sha/simple-clock-app --body https://app.example.com
+```
 
+> [!NOTE]
+> 将 `--repo janwee-sha/simple-clock-app` 里的 `janwee-sha` 替换为你自己的 GitHub 账号，并将 `192.0.2.10`、`22`、`deploy` 和 `https://app.example.com` 分别替换为你的部署主机、SSH 端口、部署用户和应用 URL。
+
+上传 Environment Secrets：
+
+在保存 `github-actions-deploy` 和 `deploy-known-hosts` 的本地或其他可信管理终端中执行以下命令。`DEPLOY_SSH_KEY` 必须读取私钥 `github-actions-deploy`，不要误用公钥文件 `github-actions-deploy.pub`；重定向符 `<` 会通过标准输入传递文件内容，避免在终端打印私钥：
+
+```bash
 gh secret set DEPLOY_SSH_KEY --env production \
   --repo janwee-sha/simple-clock-app \
   < github-actions-deploy
 gh secret set DEPLOY_KNOWN_HOSTS --env production \
   --repo janwee-sha/simple-clock-app \
   < deploy-known-hosts
-
-gh secret list --env production \
-  --repo janwee-sha/simple-clock-app
 ```
 
 > [!NOTE]
-> 将所有 `--repo janwee-sha/simple-clock-app` 中的 `janwee-sha` 替换为你自己的 GitHub 账号，并将 `192.0.2.10`、`22`、`deploy` 和 `https://app.example.com` 分别替换为你的部署主机、SSH 端口、部署用户和应用 URL。
-
-最后一条命令只会列出 Secret 名称和更新时间，不会显示原始内容。确认 `DEPLOY_SSH_KEY` 和 `DEPLOY_KNOWN_HOSTS` 都已存在后，还可以在仓库网页的 **Settings → Environments → production → Environment secrets** 中核对；也可以在这里点击 **Add environment secret**，以相同名称分别粘贴两个文件的完整内容，完成等价的网页操作。上传成功并验证受限公钥可用后，删除本地或其他可信管理终端上的临时私钥副本。
+> 将 `--repo janwee-sha/simple-clock-app` 里的 `janwee-sha` 替换为你自己的 GitHub 账号。
 
 将 Environment 的部署分支限制为 `main`。如果当前仓库和 GitHub 套餐支持 Required reviewers，建议至少在首次发布时要求人工批准：这样可以等待 `publish` 创建 GHCR Package，根据选择确认私有镜像凭据或完成公开可见性设置，再放行生产部署。部署 Job 在保护规则通过前无法读取 Environment Secrets。
 
