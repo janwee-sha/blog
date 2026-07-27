@@ -628,67 +628,30 @@ jobs:
 
 ## 10. 首次部署与验证
 
-本节使用 GitHub CLI（`gh`）创建和合并 Pull Request、查看 Actions 运行并批准首次部署。首次使用时，按照 [GitHub CLI 官方安装说明](https://github.com/cli/cli#installation) 为当前操作系统完成安装，然后通过浏览器登录 GitHub 账号：
+把 `Dockerfile`、`.dockerignore` 和 `.github/workflows/pipeline.yml` 提交并推送到特性分支。部署脚本和包装脚本已在前文直接安装到部署主机，不属于本段需要提交的仓库文件。
+
+打开应用仓库的 **Pull requests** 页面，点击 **New pull request**。将 `base` 设为 `main`，将 `compare` 设为刚推送的特性分支，然后点击 **Create pull request**。需要先创建草稿时，展开创建按钮旁的下拉菜单并选择 **Create draft pull request**。
+
+Pull Request 创建后，在页面中等待 `Test and build` 检查通过。草稿准备就绪后点击 **Ready for review**，再点击 **Merge pull request**，选择 **Squash and merge** 并确认合并。
+
+合并后打开仓库的 **Actions** 页面，选择 **CI/CD** 工作流，再打开由 `main` 分支最新提交触发的运行记录。`Test and build` 成功后会依次执行 `Publish image` 和 `Deploy production`；等待本次运行完成，并确认三个 Job 均成功。
+
+![GitHub Actions 的 CI/CD 工作流显示 Test and build、Publish image 和 Deploy production 三个 Job 均成功](/uploads/2026/07/successful-github-actions-workflow.webp)
+
+可以使用如下命令在部署主机检查容器部署情况：
 
 ```bash
-gh auth login --web \
-  --scopes repo,workflow,read:packages
+docker ps -a
 ```
 
-把 `Dockerfile`、`.dockerignore` 和 `.github/workflows/pipeline.yml` 提交到特性分支。部署脚本和包装脚本已在前文直接安装到部署主机，不属于本段需要提交的仓库文件。创建 PR、等待 CI 并合并：
-
-```bash
-gh pr create --draft --base main \
-  --title "Add secure GitHub Actions CI/CD pipeline"
-gh pr checks --watch
-gh pr ready
-gh pr merge --squash
-```
-
-`Test and build` Job 成功后，合并触发 `publish`。首次部署在 reviewer 处暂停时，通过 API 批准对应 Environment：
-
-```bash
-RUN_ID="$(gh run list --workflow pipeline.yml \
-  --branch main --limit 1 --json databaseId \
-  --jq '.[0].databaseId')"
-
-ENVIRONMENT_ID="$(gh api \
-  "repos/{owner}/{repo}/actions/runs/$RUN_ID/pending_deployments" \
-  --jq '.[0].environment.id')"
-
-gh api --method POST \
-  "repos/{owner}/{repo}/actions/runs/$RUN_ID/pending_deployments" \
-  -F "environment_ids[]=$ENVIRONMENT_ID" \
-  -f state=approved \
-  -f comment="CI, GHCR visibility and deployment prerequisites verified"
-
-gh run watch "$RUN_ID" --exit-status
-```
-
-在部署主机切换到 `deploy` 的登录 shell 后查看状态，完成后返回管理员账户：
-
-```bash
-sudo -iu deploy
-cd /opt/simple-clock-app
-docker compose ps -a
-docker compose images
-curl --fail --show-error http://127.0.0.1:7100/
-cat .env
-exit
-```
-
-`docker compose ps -a` 的输出示例如下：
+`docker compose ps -a` 此时应包含 `simple-clock-app` 正在运行的容器：
 
 ```text
-NAME                     IMAGE                                                                                                         COMMAND                                          SERVICE   CREATED      STATUS                PORTS
-simple-clock-app-app-1   ghcr.io/janwee-sha/simple-clock-app@sha256:c6617a9b2952ed553d05f596458e7e38b9c7414d7089e4c2848f56712fc9bb95   "/docker-entrypoint.sh nginx -g 'daemon off;'"   app       2 days ago   Up 2 days (healthy)   127.0.0.1:7100->80/tcp
+NAME                     IMAGE                                                                                                         COMMAND                                          SERVICE   CREATED          STATUS                    PORTS
+simple-clock-app-app-1   ghcr.io/janwee-sha/simple-clock-app@sha256:cea93970f452047674482aac3dc661845a184dd80a6f37c1df4f44b53d6fd1bf   "/docker-entrypoint.sh nginx -g 'daemon off;'"   app       30 minutes ago   Up 30 minutes (healthy)   127.0.0.1:7100->80/tcp
 ```
 
-`STATUS` 中的 `Up 2 days (healthy)` 表明容器正在运行且已经通过健康检查，`PORTS` 中的 `127.0.0.1:7100->80/tcp` 则表明部署主机的回环地址端口 `7100` 已映射到容器端口 `80`。
-
 `.env` 中应该记录带 digest 的完整镜像引用，而不是 `main` 或 `latest` 标签。也可以在 GitHub 仓库的“Actions”页面查看构建日志，在“Deployments”页面查看生产环境和部署 URL。
-
-如果第一次由工作流发布镜像时出现 `permission_denied: write_package`，检查同名 GHCR Package 是否曾由命令行创建但没有关联当前仓库。在 Package 设置中连接仓库并授予 GitHub Actions 写入权限后重试。
 
 ## 11. 验证自动回滚
 
@@ -754,6 +717,3 @@ exit
 13.  simple-clock-app 示例项目：[https://github.com/janwee-sha/simple-clock-app](https://github.com/janwee-sha/simple-clock-app)
 14.  setup-node Action：[https://github.com/actions/setup-node](https://github.com/actions/setup-node)
 15.  Nginx Docker 官方镜像：[https://hub.docker.com/_/nginx](https://hub.docker.com/_/nginx)
-16.  GitHub CLI 手册：[https://cli.github.com/manual/](https://cli.github.com/manual/)
-17.  GitHub CLI 安装说明：[https://github.com/cli/cli#installation](https://github.com/cli/cli#installation)
-18.  `gh auth login` 命令：[https://cli.github.com/manual/gh_auth_login](https://cli.github.com/manual/gh_auth_login)
