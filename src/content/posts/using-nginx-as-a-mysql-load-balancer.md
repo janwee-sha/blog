@@ -15,7 +15,7 @@ lang: "zh_CN"
 
 ## 01. 引言
 
-在请求量很大的网络应用程序中，我们通常需要部署多个应用实例来缓解应用的工作负载，然后用负载均衡器（硬件或者软件）将请求流量按照特定的负载均衡算法转发到不同的实例。这篇文章是使用 Nginx 作为 MySQL 的 TCP 负载均衡器的实践。
+在请求量较大的网络应用中，通常会部署多个应用实例来分担工作负载，再由硬件或软件负载均衡器按照特定算法将请求转发到不同实例。本文将实践如何使用 Nginx 作为 MySQL 的 TCP 负载均衡器。
 
 使用负载均衡器的好处：
 
@@ -113,7 +113,10 @@ services:
       - nginx_mariadb
 ```
 
-这里使用 Bitnami 的镜像是因为更容易部署 MySQL 主从复制架构。主节点的主机名是 `master.janwee.ubuntu`，两个从节点的主机名是 `slave0.janwee.ubuntu` 和 `slave1.janwee.ubuntu`。将所有 MySQL 节点和 Nginx 节点都放在同一个网络下，在 Nginx 负载均衡器中暴露 `3306` 和 `33060` 端口。
+> [!NOTE]
+> 将 Compose 配置中的 `nerddb`、`janwee`、`rplusr` 和 `*.janwee.ubuntu` 分别替换为你的数据库名、数据库账号或密码、复制账号和主机名，并在后续 Nginx 配置与连接命令中保持一致。
+
+这里使用 Bitnami 镜像，是因为它更便于部署 MySQL 主从复制架构。主节点的主机名是 `master.janwee.ubuntu`，两个从节点的主机名是 `slave0.janwee.ubuntu` 和 `slave1.janwee.ubuntu`。所有 MySQL 节点和 Nginx 节点都位于同一网络中，Nginx 负载均衡器暴露 `3306` 和 `33060` 端口。
 
 Nginx 节点中的 `volumes` 选项将配置文件 `nginx/nginx.conf` 挂载到容器内部：
 
@@ -157,6 +160,9 @@ stream {
 }
 ```
 
+> [!NOTE]
+> 将配置中的 `master.janwee.ubuntu`、`slave0.janwee.ubuntu` 和 `slave1.janwee.ubuntu` 替换为你在 Compose 配置中使用的主机名。
+
 这里设置了两个输入流：`read` 和 `write`。`read` 同时指向主节点和两个从节点，`write` 指向主节点。
 
 然后将 Nginx 主机名 `janwee.ubuntu` 加入本地 DNS 配置文件 `/etc/hosts` 中，在 Linux 终端中使用如下命令：
@@ -164,6 +170,9 @@ stream {
 ```bash
 echo "127.0.0.1 janwee.ubuntu" >> /etc/hosts
 ```
+
+> [!NOTE]
+> 将命令中的 `janwee.ubuntu` 替换为你为 Nginx 配置的本地主机名；如果地址不是回环地址，也要替换 `127.0.0.1`。
 
 在 `docker-compose.yml` 所在目录下运行如下命令启动容器组：
 
@@ -196,6 +205,9 @@ $ mysql -h janwee.ubuntu -P 3306 -u root -pjanwee -e "select @@hostname";
 +----------------------+
 ```
 
+> [!NOTE]
+> 将命令中的 `janwee.ubuntu`、`root` 和 `janwee` 分别替换为你的 Nginx 主机名、MySQL 用户名和密码。
+
 测试连接到 `33060` 端口并使用 `SELECT @@hostname;` 查询当前主机名：
 
 ```bash
@@ -220,6 +232,9 @@ $ mysql -h janwee.ubuntu -P 33060 -u root -pjanwee -e "select @@hostname";
 | master.janwee.ubuntu |
 +----------------------+
 ```
+
+> [!NOTE]
+> 将命令中的 `janwee.ubuntu`、`root` 和 `janwee` 分别替换为你的 Nginx 主机名、MySQL 用户名和密码。
 
 测试结果表明，发往 `3306` 端口的连接会由 Nginx 轮询转发到主节点和两个从节点；发往 `33060` 端口的连接只会转发到主节点。
 

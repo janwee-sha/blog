@@ -69,7 +69,7 @@ public class StaticBlockSingleton {
 
 ### 2.2. 对初始化代码加锁
 
-使用锁最简单的方式是使用 `synchronized` 关键字修饰入口方法，但是并发性能较低，进阶的方式是使用双重检查锁的方式。
+最简单的加锁方式是用 `synchronized` 关键字修饰入口方法，但并发性能较低；更进一步，可以使用双重检查锁。
 
 ```java
 public class DoubleCheckedLockingSingleton {
@@ -195,10 +195,10 @@ protected Object readResolve() {
 ## 引用
 
 1.  [Java Singleton Pattern: Best Practices & Examples](https://www.digitalocean.com/community/tutorials/java-singleton-design-pattern-best-practices-examples)
-2.  [《Java 并发编程实战》](https://jcip.net/)（Brian Goetz、Tim Peierls、Joshua Bloch、Joseph Bowbeer、David Holmes、Doug Lea 著，机械工业出版社）
-3.  [《Effective Java, 3rd Edition》](https://www.informit.com/store/effective-java-9780134686097)（Joshua Bloch 著，Addison-Wesley Professional）
-4.  [Java Platform, Standard Edition 21 API Specification: `Class`](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Class.html)
-5.  [The Java Language Specification, Java SE 21 Edition, §12.4 Initialization of Classes and Interfaces](https://docs.oracle.com/javase/specs/jls/se21/html/jls-12.html#jls-12.4)
-6.  [The Java Language Specification, Java SE 21 Edition, §17.4.5 Happens-before Order](https://docs.oracle.com/javase/specs/jls/se21/html/jls-17.html#jls-17.4.5)
-7.  [Java Platform, Standard Edition 21 API Specification: `Constructor`](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/reflect/Constructor.html)
-8.  [Java Object Serialization Specification, §3.7 The `readResolve` Method](https://docs.oracle.com/en/java/javase/21/docs/specs/serialization/input.html#the-readresolve-method)
+2.  《Java 并发编程实战》（Brian Goetz、Tim Peierls、Joshua Bloch、Joseph Bowbeer、David Holmes、Doug Lea 著，机械工业出版社）
+3. 《Effective Java, 3rd Edition》（Joshua Bloch 著，Addison-Wesley Professional）
+4. [Java Platform, Standard Edition 21 API Specification: `Class`](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Class.html)
+5. [The Java Language Specification, Java SE 21 Edition, §12.4 Initialization of Classes and Interfaces](https://docs.oracle.com/javase/specs/jls/se21/html/jls-12.html#jls-12.4)
+6. [The Java Language Specification, Java SE 21 Edition, §17.4.5 Happens-before Order](https://docs.oracle.com/javase/specs/jls/se21/html/jls-17.html#jls-17.4.5)
+7. [Java Platform, Standard Edition 21 API Specification: `Constructor`](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/reflect/Constructor.html)
+8. [Java Object Serialization Specification, §3.7 The `readResolve` Method](https://docs.oracle.com/en/java/javase/21/docs/specs/serialization/input.html#the-readresolve-method)

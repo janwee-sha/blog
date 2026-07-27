@@ -65,7 +65,7 @@ public class DelayedMessageProducer {
 
 当消息发送到主队列后，由于没有被消费，5 秒后消息会变成死信，被发送至队列的死信交换机并被路由至绑定到该死信交换机的队列。
 
-接着我们写一个消息消费者去消费绑定到死信交换机的队列里的消息：
+接着编写消息消费者，用于消费绑定到死信交换机的队列中的消息：
 
 ```java
 public class DelayedMessageConsumer {

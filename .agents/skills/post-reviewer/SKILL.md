@@ -43,7 +43,7 @@ description: 交互式审阅并修改本博客站点仓库中 src/content/posts 
 
 1. 使用 `git rev-parse --show-toplevel` 找到仓库根目录。确认 `src/content/posts/` 存在，并记录初始 `git status --short` 输出。
 2. 读取约束所选文章的仓库级 `AGENTS.md`、`README.md`、`package.json`、Astro 配置、content collection schema 与内容验证脚本。优先采用仓库当前规则，而非技能内置示例。
-3. 审阅内容前，完整读取 [references/review-checklist.md](references/review-checklist.md)。
+3. 审阅内容前，完整读取 [references/post-template.md](references/post-template.md) 与 [references/review-checklist.md](references/review-checklist.md)。
 4. 使用只读预检解析范围并建立基线：
 
    ```bash
@@ -52,7 +52,7 @@ description: 交互式审阅并修改本博客站点仓库中 src/content/posts 
 
    将此脚本视为确定性预检，而非完整的编辑审阅。拒绝 `src/content/posts/` 之外的路径、不存在的文章与有歧义的 slug。
 5. 完整读取每篇选中的文章。判断术语、标题结构、编号、标点、一致性，以及文件名 slug 的英文语法和其是否准确表达标题与中心主题时，检查整个文件；不得根据片段推断语义。
-6. 检查必检清单的所有类别，包括从 `domain-driven-design.md` 提取的标准开篇引文、编号章节层级与引用列表结构。将这些结构约定视为仓库发布规则，而非可选示例；首章只需在 `## 01.` 后使用有意义的标题，不强制使用 `引言`。在此阶段验证本地链接和去重后的外部链接。检查期间不得编辑。
+6. 检查必检清单的所有类别，包括文章模板规定的标准开篇引文、编号章节层级与引用列表结构，以及因读者环境而异的示例值是否附有明确的替换提示。将这些约定视为仓库发布规则，而非可选示例；首章只需在 `## 01.` 后使用有意义的标题，不强制使用 `引言`。在此阶段验证本地链接和去重后的外部链接。检查期间不得编辑。
 7. 建立修复建议集，包含准确文件与行号、当前文本或状态、建议改动及理由。若发现 slug 问题，引用当前文件路径与 frontmatter 标题所在行。
 
 ## Phase 2: Review with the user
@@ -116,7 +116,7 @@ description: 交互式审阅并修改本博客站点仓库中 src/content/posts 
    - 反例：“填写用途说明，例如 `simple-clock-app deploy`”
    - 反例：“领域驱动设计（`Domain-Driven Design`，`DDD`）”
 - 保留有意使用的 hard line breaks、表格、数学公式、directives、admonitions、raw HTML 与 Expressive Code metadata。
-- 补充说明使用 `NOTE` admonition 格式书写。
+- 补充说明使用 `NOTE` admonition 格式书写。对因读者环境而异且需要替换的示例值，严格采用必检清单中的替换提示格式，不得只依赖变量名或上下文暗示读者自行修改。
 - 警告信息使用 `WARNING` admonition 格式书写。
 - 按代码片段的写作意图判断完整性。对仅用于解释概念的演示代码，不得仅因缺少完整包声明或包名、导入或引用、依赖或来源链接以及外围样板而报错或补全；优先保留聚焦概念的最小示例。只有当代码明确讲解包结构或导入、引用关系，或者属于需要实际可运行的教程步骤时，才要求补齐与其目的相符的信息，并将可运行代码改动按 Phase 2 交由用户复核。
 - 写出可发布的终态，不要把文章写成运维日志。修正可运行流程时，删除已废弃步骤，也不要记录如何修复的废弃步骤。

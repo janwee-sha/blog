@@ -17,9 +17,9 @@ lang: "zh_CN"
 
 CAS 是避免使用锁的基本机制之一。
 
-CAS 的原理是变量只在线程内的与从主存中获取的值相等时更新，且获取与更新是一个原子操作。整个操作不需要使用锁。
+CAS 的原理是：只有当线程持有的值与从主存中获取的值相等时，变量才会更新；比较与更新是一个原子操作，整个过程不需要使用锁。
 
-其中最重要的事是硬件必须支持 CAS，以使其是一个真正的原子操作而且不需要使用锁。
+其中最重要的是，硬件必须支持 CAS，才能保证它是一个真正的原子操作，而且无须使用锁。
 
 Java 5.0 引入了对 CAS 的底层支持，在 `int`、`long` 和对象的引用等类型上都公开了 CAS 操作，并且 JVM 把它们编译为底层硬件提供的最有效的方法。在支持 CAS 的平台上，运行时把它们编译为相应的指令。在不支持的平台上，JVM 将使用自旋锁。在原子变量类中使用了这些底层的 JVM 支持为数字类型和引用类型提供一种高效的 CAS 操作。
 
@@ -71,5 +71,5 @@ public void test() throws InterruptedException {
 
 ## 引用
 
-1.  [《Java 并发编程实战》](https://www.amazon.com/Java-Concurrency-Practice-Brian-Goetz/dp/0321349601)（Brian Goetz、Tim Peierls、Joshua Bloch、Joseph Bowbeer、David Holmes、Doug Lea 著，机械工业出版社）
-2.  [Lock-Free Programming in Java](https://www.baeldung.com/lock-free-programming)（Baeldung）
+1. 《Java 并发编程实战》（Brian Goetz、Tim Peierls、Joshua Bloch、Joseph Bowbeer、David Holmes、Doug Lea 著，机械工业出版社）
+2. [Lock-Free Programming in Java](https://www.baeldung.com/lock-free-programming)（Baeldung）
