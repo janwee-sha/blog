@@ -636,6 +636,8 @@ Pull Request 创建后，在页面中等待 `Test and build` 检查通过。草�
 
 合并后打开仓库的 **Actions** 页面，选择 **CI/CD** 工作流，再打开由 `main` 分支最新提交触发的运行记录。`Test and build` 成功后会依次执行 `Publish image` 和 `Deploy production`；等待本次运行完成，并确认三个 Job 均成功。
 
+![GitHub Actions 的 CI/CD 工作流显示 Test and build、Publish image 和 Deploy production 三个 Job 均成功](/uploads/2026/07/successful-github-actions-workflow.webp)
+
 可以使用如下命令在部署主机检查容器部署情况：
 
 ```bash
