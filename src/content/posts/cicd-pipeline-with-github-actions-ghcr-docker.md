@@ -390,7 +390,7 @@ ssh-keygen -t ed25519 -N '' \
 sudo -iu deploy
 ```
 
-然后将将公钥内容写入 `/home/deploy/.ssh/authorized_keys` 文件：
+然后将公钥内容写入 `/home/deploy/.ssh/authorized_keys` 文件：
 
 ```bash
 install -d -m 700 ~/.ssh
@@ -399,11 +399,14 @@ chmod 600 ~/.ssh/authorized_keys
 vim ~/.ssh/authorized_keys
 ```
 
-在 Vim 中添加以下一行；将 `<PUBLIC_KEY>` 替换为 `github-actions-deploy.pub` 中的完整公钥：
+在 Vim 中添加以下一行:
 
 ```text title="/home/deploy/.ssh/authorized_keys"
-restrict,command="/opt/simple-clock-app/ssh-deploy-wrapper.sh" ssh-ed25519 <PUBLIC_KEY> github-actions-deploy
+restrict,command="/opt/simple-clock-app/ssh-deploy-wrapper.sh" <PUBLIC_KEY>
 ```
+
+> [!NOTE]
+> 将 `authorized_keys` 中的 `<PUBLIC_KEY>` 替换为 `github-actions-deploy.pub` 中的完整公钥。
 
 保存并退出 Vim 后，返回管理员账户：
 
