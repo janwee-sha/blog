@@ -15,7 +15,7 @@
 
 ## 2. Canonical Article Structure
 
-将以下从 `src/content/posts/domain-driven-design.md` 提取的结构视为仓库规范文章格式。即使 Markdown 仍可成功渲染，也要报告偏差。
+将 [post-template.md](post-template.md) 中的结构视为仓库规范文章格式。即使 Markdown 仍可成功渲染，也要报告偏差。
 
 ### 2.1. Opening Classical Epigraph
 
