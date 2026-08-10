@@ -6,7 +6,7 @@ description: "介绍如何结合 RabbitMQ 的死信交换机（DLX）与消息 T
 image: ""
 tags: ["RabbitMQ", "延迟消息"]
 category: "消息中间件"
-draft: false
+draft: true
 lang: "zh_CN"
 ---
 > 君子藏器于身，待时而动

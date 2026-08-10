@@ -6,7 +6,7 @@ description: "介绍令牌桶限流的基本思路，并通过 Java 示例演示
 image: ""
 tags: ["令牌桶", "流量控制"]
 category: "系统架构"
-draft: false
+draft: true
 lang: "zh_CN"
 ---
 > 知止而后有定

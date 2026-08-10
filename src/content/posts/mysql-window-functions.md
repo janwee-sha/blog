@@ -6,7 +6,7 @@ description: "介绍 MySQL 8.0 窗口函数的基本语法、分区、排序与�
 image: ""
 tags: ["MySQL", "MySQL 窗口函数"]
 category: "MySQL"
-draft: false
+draft: true
 lang: "zh_CN"
 ---
 > 物有本末，事有终始，知所先后，则近道矣。

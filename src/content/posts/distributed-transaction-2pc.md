@@ -6,7 +6,7 @@ description: "介绍分布式事务与二阶段提交（2PC/XA）的基本流程
 image: ""
 tags: ["distributed transaction", "分布式事务"]
 category: "分布式事务"
-draft: false
+draft: true
 lang: "zh_CN"
 ---
 > 二人同心，其利断金

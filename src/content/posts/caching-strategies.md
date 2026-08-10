@@ -6,7 +6,7 @@ description: "介绍旁路缓存、直读、直写、回写与绕写等常见缓
 image: ""
 tags: ["缓存", "读写策略"]
 category: "系统架构"
-draft: false
+draft: true
 lang: "zh_CN"
 ---
 > 工欲善其事，必先利其器

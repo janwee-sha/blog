@@ -6,7 +6,7 @@ description: "介绍二叉堆的性质、数组存储方式与常见操作，并
 image: ""
 tags: ["堆", "数据结构"]
 category: "数据结构和算法"
-draft: false
+draft: true
 lang: "zh_CN"
 ---
 > 合抱之木，生于毫末；九层之台，起于累土
