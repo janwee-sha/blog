@@ -6,7 +6,7 @@ description: "本文演示如何使用 Nginx 在 MySQL 主从复制架构中实�
 image: ""
 tags: ["Load Balancer", "MySQL", "Nginx"]
 category: "系统架构"
-draft: false
+draft: true
 lang: "zh_CN"
 ---
 > 天之道，损有余而补不足
