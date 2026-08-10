@@ -53,11 +53,11 @@
 - 读取 `src/content/config.ts`，按当前 posts collection schema 验证字段。
 - 将 schema 与 `README.md`、文章生成器和验证脚本对照。字段可能在 schema 中可选，但被仓库发布策略要求必填。
 - 检查 YAML 类型、duplicate keys、引号、ISO 日期、booleans、arrays 与 unknown keys。确保 `published` 和 `updated` 的时间关系合理；没有证据时不得改动日期。
-- 按 `README.md` 的说明，从所选文章路径派生 slug：对于 `src/content/posts/<slug>.md`，检查 `<slug>` 文件名 stem。
-- 要求 slug 使用 lowercase ASCII kebab-case。将产品名、acronyms 与技术术语转换为 URL-safe words 时，保留官方拼写与惯用形式。
-- 将英文 slug 与 frontmatter `title`、`description` 和文章中心主题比较。检查英文语法、词语选择、单复数、词性、介词与自然语序。
+- route slug 是文章相对 `src/content/posts/` 的无扩展名路径，例如 `java/cas-in-java`；要求每个路径段使用 lowercase ASCII kebab-case。
+- 公开文章使用 `<category-slug>/<post-slug>.md`；分类目录使用与 `category` 语义一致的英文 slug，例如 `Java` 对应 `java/`。草稿统一使用 `drafts/<post-slug>.md`，`draft: false` 不得留在 `drafts/`。
+- 将文章 slug 与 `title`、`description` 和中心主题比较，检查英文语法、词语选择、单复数、词性、介词与自然语序；同时检查 `category`、`draft` 与目录一致性。
 - 优先采用简洁、地道且保留中文标题区分性含义的英文表达。不要求逐字翻译，但要标记误译、生硬的机器翻译、歧义、遗漏核心概念与无依据的过度具体化。
-- 每个 slug 修正建议都归为需用户复核，因为文件名决定发布 route。展示当前 slug 与拟议 slug、理由及 URL/link 影响；不得将重命名归为确定性修复。
+- 文件重命名、移动、分类或草稿状态引发的 route slug 变更都归为需用户复核。展示新旧 slug、理由及 URL/link 影响。
 - 检查 `draft` 状态、language tag、category、tags、description 与 cover image 的内部一致性。
 - 保持 `description` 有用、语法正确、未截断，并能代表文章内容。避免复制导航文字或正文的任意片段。
 - 保留仓库支持的扩展：math、directives、GitHub-style admonitions、custom components 与 Expressive Code annotations。

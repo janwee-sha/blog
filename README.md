@@ -29,10 +29,13 @@ pnpm preview
 
 ## 发布新文章
 
+公开文章放在 `src/content/posts/<category-slug>/<post-slug>.md`，分类与文章 slug 均使用小写英文 kebab-case，例如 `category: "Java"` 对应 `java/`。`draft: true` 的文章统一放在 `src/content/posts/drafts/`。文章 URL 为 `/posts/<相对路径（不含扩展名）>/`。
+
 ```bash
 git switch -c post/<slug>
-pnpm new-post <slug>
-# 编辑 src/content/posts/<slug>.md 并添加所需图片
+pnpm new-post <category-slug>/<post-slug>
+# 草稿改用：pnpm new-post drafts/<post-slug>，并将 draft 改为 true
+# 编辑生成的文章并添加所需图片
 pnpm content:verify
 pnpm check
 pnpm type-check

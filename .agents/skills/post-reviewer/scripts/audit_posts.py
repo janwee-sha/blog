@@ -27,6 +27,8 @@ CHAPTER_RE = re.compile(r"(\d{2})\. (\S.*)$")
 SUBSECTION_RE = re.compile(r"(\d+)\.(\d+)\. (\S.*)$")
 REFERENCE_ENTRY_RE = re.compile(r"(\d+)\.  (\S.*)$")
 BOOK_REFERENCE_RE = re.compile(r"《[^《》]+》（[^（）]+ 著，[^（）]+）$")
+ROUTE_SEGMENT_RE = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
+DRAFTS_DIR = "drafts"
 
 
 @dataclass(frozen=True)
@@ -151,6 +153,85 @@ def unquote_scalar(value: str) -> str:
     if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
         return value[1:-1]
     return value
+
+
+def ascii_category_slug(value: str) -> str | None:
+    if not re.fullmatch(r"[A-Za-z0-9]+(?:[ _-]+[A-Za-z0-9]+)*", value):
+        return None
+    return re.sub(r"[ _-]+", "-", value).lower()
+
+
+def inspect_post_location(
+    post: Path,
+    root: Path,
+    fields: dict[str, tuple[str, int]],
+    diagnostics: list[Diagnostic],
+) -> None:
+    posts_root = (root / "src/content/posts").resolve()
+    relative_post = post.relative_to(posts_root)
+    route_segments = relative_post.with_suffix("").parts
+    relative = post.relative_to(root).as_posix()
+
+    if len(route_segments) != 2:
+        add(
+            diagnostics,
+            "error",
+            "unexpected-post-directory-depth",
+            relative,
+            1,
+            "post path must be `<category-slug>/<post-slug>.md` or `drafts/<post-slug>.md`",
+        )
+    for segment in route_segments:
+        if not ROUTE_SEGMENT_RE.fullmatch(segment):
+            add(
+                diagnostics,
+                "error",
+                "invalid-route-slug-segment",
+                relative,
+                1,
+                f"route slug segment must use lowercase ASCII kebab-case: {segment}",
+            )
+
+    directory = route_segments[0] if len(route_segments) > 1 else ""
+    draft_field = fields.get("draft")
+    if not draft_field or draft_field[0] not in {"true", "false"}:
+        return
+
+    draft, draft_line = draft_field
+    if draft == "true":
+        if directory != DRAFTS_DIR:
+            add(
+                diagnostics,
+                "error",
+                "draft-outside-drafts-directory",
+                relative,
+                draft_line,
+                "draft post must be stored in `src/content/posts/drafts/`",
+            )
+        return
+    if directory == DRAFTS_DIR:
+        add(
+            diagnostics,
+            "error",
+            "public-post-in-drafts-directory",
+            relative,
+            draft_line,
+            "public post must be stored in its category directory, not `drafts/`",
+        )
+        return
+
+    category_field = fields.get("category")
+    category = unquote_scalar(category_field[0]).strip() if category_field else ""
+    expected_directory = ascii_category_slug(category)
+    if not category or (expected_directory and directory != expected_directory):
+        add(
+            diagnostics,
+            "warning",
+            "category-directory-mismatch",
+            relative,
+            category_field[1] if category_field else 1,
+            "public post category and category directory do not match",
+        )
 
 
 def recent_posts(root: Path, count: int) -> list[dict[str, str]]:
@@ -486,6 +567,8 @@ def audit_post(post: Path, root: Path) -> tuple[list[Diagnostic], set[str]]:
             add(diagnostics, "warning", "non-iso-updated-date", relative, fields["updated"][1], "updated should use YYYY-MM-DD")
         if "draft" in fields and fields["draft"][0] not in {"true", "false"}:
             add(diagnostics, "error", "invalid-draft", relative, fields["draft"][1], "draft must be an unquoted boolean")
+
+    inspect_post_location(post, root, fields, diagnostics)
 
     headings: dict[str, int] = {}
     structural_headings: list[tuple[int, int, str]] = []
