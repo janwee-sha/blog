@@ -9,11 +9,15 @@ draft: false
 lang: "zh_CN"
 ---
 
+> 法者，天下之程式也，万事之仪表也
+>
+> ——《管子·明法解》
+
 ## 01. 为什么还要先写规格
 
 使用 AI Agent 写代码时，最诱人的方式是直接描述需求，然后让它开始修改文件。对于一个按钮、一处样式或边界明确的缺陷，这样做通常没有问题。但需求一旦跨越多个模块，Agent 很容易一边理解需求，一边临时决定架构，最后交付出一套“代码能够运行，行为却和预期有偏差”的实现。
 
-我在立项 [SubTandem](https://github.com/janwee-sha/SubTandem) 时就引入了 Spec Kit。这个为 IINA 提供实时双语字幕的插件，看起来只是“读取字幕、调用翻译服务、显示译文”，实际却同时涉及播放器窗口隔离、异步任务失效、OpenAI-compatible 与 Ollama 协议、凭据存储、Swift helper、TypeScript 插件、安装包和实机验收。任何一个边界没有提前说清，最后都可能表现为译文写入错误窗口、跳转后显示过期结果，甚至把凭据带进日志。
+我在立项 [SubTandem](https://github.com/janwee-sha/SubTandem) 时就引入了 Spec Kit。这个为 IINA 提供实时双语字幕的插件，看起来只是“读取字幕、调用翻译服务、显示译文”，实际却同时涉及播放器窗口隔离、异步任务失效、OpenAI Chat Completions 兼容协议与 Ollama 协议、凭据存储、Swift helper、TypeScript 插件、安装包和实机验收。任何一个边界没有提前说清，最后都可能表现为译文写入错误窗口、跳转后显示过期结果，甚至把凭据带进日志。
 
 [GitHub Spec Kit](https://github.com/github/spec-kit) 提供了一套开箱即用的 Spec-Driven Development（SDD）脚手架，把“从想法到代码”拆成一组职责清楚的阶段，并使用 Markdown 产物在阶段之间传递已经确认的意图。按照[官方对 SDD 的解释](https://github.github.com/spec-kit/concepts/sdd.html)，规格不再是写完就丢弃的前置文档，而是能够继续驱动计划、任务与实现的契约。
 
@@ -48,6 +52,9 @@ specify init subtandem \
 cd subtandem
 ```
 
+> [!NOTE]
+> 将命令中的 `subtandem` 替换为你的项目目录名称。
+
 本文以 2026 年 8 月发布的 Spec Kit 1.0.1 和 Codex skills 集成为例，所以下文使用 `$speckit-specify` 这类调用形式。其他 Agent 通常使用 `/speckit.specify`；入口名称不同，读取的模板和生成的 SDD 产物一致。
 
 如果代码仓库已经存在，则不需要先把整个系统倒推成规格。先提交或暂存当前改动，建立一个可以审查的基线，再从仓库根目录初始化：
@@ -58,7 +65,7 @@ specify init --here --force \
   --integration-options="--skills"
 ```
 
-`--here` 表示使用当前目录，`--force` 允许向非空目录合并脚手架文件。它不会重写业务代码，但可能刷新与 Spec Kit 冲突的受管文件，因此在已有项目中执行后一定要查看 Git diff。[官方的既有项目接入指南](https://github.github.com/spec-kit/guides/existing-projects.html)也建议从下一项边界明确的变更开始使用，而不是把“为全部旧代码补规格”当作第一项任务。
+`--here` 表示使用当前目录，`--force` 允许向非空目录合并脚手架文件。它不会重写业务代码，但可能刷新与 Spec Kit 冲突的受管文件，因此在已有项目中执行后一定要查看 `git diff`。[官方的既有项目接入指南](https://github.github.com/spec-kit/guides/existing-projects.html)也建议从下一项边界明确的变更开始使用，而不是把“为全部旧代码补规格”当作第一项任务。
 
 以 Codex skills 模式初始化后，核心目录大致如下：
 
@@ -92,7 +99,7 @@ specify integration upgrade codex
 specify extension update
 ```
 
-SubTandem 最近一次升级就是从 0.15.2 更新到 1.0.1。除了版本字段，升级还刷新了多个 skill、Shell 脚本和模板，并将活动规格指针 `.specify/feature.json` 调整为本机状态，不再纳入版本控制。这样的改动不应被当作一个黑盒命令直接接受；我会先让 `integration status` 确认受管文件没有本地修改，升级后再检查 diff 和运行项目验证。更复杂的升级场景可以参考[官方 Upgrade Guide](https://github.github.com/spec-kit/upgrade.html)。
+SubTandem 最近一次升级就是从 0.15.2 更新到 1.0.1。除了版本字段，升级还刷新了多个 skill、Shell 脚本和模板，并将活动规格指针 `.specify/feature.json` 调整为本机状态，不再纳入版本控制。这样的改动不应被当作一个黑盒命令直接接受；我会先让 `specify integration status` 确认受管文件没有本地修改，升级后再检查 diff 和运行项目验证。更复杂的升级场景可以参考[官方 Upgrade Guide](https://github.github.com/spec-kit/upgrade.html)。
 
 ## 03. 先看完整工作流
 
@@ -158,14 +165,14 @@ $speckit-specify
 
 为 IINA 提供按播放位置实时翻译外部文本字幕的双语字幕插件。
 翻译延迟或失败不得暂停视频，用户只允许将当前位置附近的必要字幕
-发送给自己明确选择的 OpenAI-compatible 或 Ollama 服务。
+发送给自己明确选择的兼容 OpenAI Chat Completions API 的服务或 Ollama 服务。
 ```
 
 命令会创建类似 `specs/001-realtime-subtitle-translation/` 的功能目录，把它记录为当前活动规格，并生成 `spec.md`。其中最重要的内容不是一段更长的需求描述，而是可以独立验收的用户故事、Given/When/Then 场景、功能需求、边界情况、范围外事项、假设和可量化成功标准。
 
 SubTandem 的 P1 用户故事是“观看实时双语字幕”。它进一步规定：原字幕保持可见，译文按原时间轴出现，翻译失败不得阻塞播放，两个播放器窗口之间不得串状态。P2 才讨论有限前瞻和会话缓存，P3 再处理翻译服务 Profile。这样排序后，即使后面的管理能力尚未完成，前面的故事仍能独立测试，而不是只能等整个项目一次性交付。
 
-规格阶段还要主动写清不做什么。当时 MVP 只处理可访问的外部 SRT/ASS，不做音频转写、图形字幕、整片预翻译、持久译文缓存和云同步。后来 SubTandem 对内嵌字幕和独立 Overlay 的支持分别成为新的有界规格，而不是悄悄扩大第一项任务。这种切片方式既保护上下文，也让每次实现都有清楚的验收终点。
+规格阶段还要主动写清不做什么。当时 MVP 只处理可访问的外部 SRT/ASS，不做音频转写、图像型字幕、整片预翻译、持久译文缓存和云同步。后来 SubTandem 对内嵌字幕和独立 Overlay 的支持分别成为新的有界规格，而不是悄悄扩大第一项任务。这种切片方式既保护上下文，也让每次实现都有清楚的验收终点。
 
 ### 5.1. Clarify：在设计前消灭高影响歧义
 
@@ -324,3 +331,9 @@ $speckit-converge
 ```
 
 走完之后，最值得复盘的不是 Agent 写了多少代码，而是每个阶段是否都把不确定性变成了下一阶段可以直接使用的契约。只要这条传递链成立，换一个会话、换一个 Agent，甚至隔一段时间再回来，项目意图仍然能够继续被执行。
+
+## 引用
+
+1. SubTandem 源码仓库：[janwee-sha/SubTandem](https://github.com/janwee-sha/SubTandem)
+2. GitHub Spec Kit 源码仓库：[github/spec-kit](https://github.com/github/spec-kit)
+3. Den Delimarsky：[What's The Deal With GitHub Spec Kit](https://den.dev/blog/github-spec-kit/)
