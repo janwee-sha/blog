@@ -103,7 +103,7 @@ SubTandem 最近一次升级就是从 0.15.2 更新到 1.0.1。除了版本字�
 
 ## 03. 先看完整工作流
 
-Spec Kit 1.0.1 的完整 SDD 主线如下:
+Spec Kit 1.0.1 的完整 SDD 主线如下。`constitution` 是项目级治理步骤，只在建项或规则变化时执行；蓝色节点组成每项功能的主线，黄色虚线框表示按风险加入的可选质量门。`implement` 与 `converge` 会循环，直到实现与契约收敛。
 
 ```mermaid
 flowchart TD
