@@ -8,3 +8,5 @@ RAG Pipeline（Retrieval-Augmented Generation Pipeline，检索增强生成流�
 ## SDD、GitHub SpecKit
 
 ## RAG、分层记忆系统、子代理（Sub-Agent）架构
+
+## SonarQube（代码质量）、TestContainers（集成测试）、JUnit 5 + Mockito 
