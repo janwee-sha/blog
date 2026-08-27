@@ -1,7 +1,7 @@
 ---
 title: "GitHub Spec Kit：开箱即用的 SDD 脚手架"
 published: 2026-08-27
-description: "以 SubTandem 的开发实践为主线，讲清 GitHub Spec Kit 从宪法、规格、澄清、计划、清单、任务、分析、实现到收敛的完整 SDD 工作流，以及上下文和子 Agent 协作方法。"
+description: "介绍 GitHub Spec Kit 从宪法、规格、澄清、计划、清单、任务、分析、实现到收敛的完整 SDD 工作流，以及上下文和子 Agent 协作方法。"
 image: ""
 tags: ["AI", "SDD", "GitHub Spec Kit", "Codex"]
 category: "AI"
@@ -46,14 +46,14 @@ uv tool install specify-cli \
 对于一个尚未创建的新项目，可以让 `specify` 建立项目目录，并为 Codex 安装 skills 形式的命令：
 
 ```bash
-specify init subtandem \
+specify init <your_project> \
   --integration codex \
   --integration-options="--skills"
-cd subtandem
+cd <your_project>
 ```
 
 > [!NOTE]
-> 将命令中的 `subtandem` 替换为你的项目目录名称。
+> 将命令中的 `<your_project>` 替换为你的项目目录名称。
 
 本文以 2026 年 8 月发布的 Spec Kit 1.0.1 和 Codex skills 集成为例，所以下文使用 `$speckit-specify` 这类调用形式。其他 Agent 通常使用 `/speckit.specify`；入口名称不同，读取的模板和生成的 SDD 产物一致。
 
@@ -73,7 +73,7 @@ specify init --here --force \
 .
 ├── .agents/skills/          # Codex 可调用的 speckit skills
 ├── .specify/
-│   ├── memory/              # 项目宪法
+│   ├── memory/              # 记忆
 │   ├── scripts/             # 各阶段使用的辅助脚本
 │   └── templates/           # spec、plan、tasks 等模板
 └── specs/                   # 每项功能的 SDD 产物
