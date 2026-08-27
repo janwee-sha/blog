@@ -103,7 +103,7 @@ SubTandem 最近一次升级就是从 0.15.2 更新到 1.0.1。除了版本字�
 
 ## 03. 先看完整工作流
 
-Spec Kit 1.0.1 的完整 SDD 主线如下。紫色的 `constitution` 是项目级治理步骤，只在建项或规则变化时执行；蓝色节点组成每项功能的主线，黄色虚线框表示按风险加入的可选质量门，绿色节点表示可以进入评审与交付。`implement` 与 `converge` 会循环，直到实现与契约收敛。
+Spec Kit 1.0.1 的完整 SDD 主线如下:
 
 ```mermaid
 flowchart TD
@@ -315,22 +315,6 @@ Spec Kit 能快速生成整套目录，但文件齐全不代表 SDD 做得好。
 契约还要控制自身规模。`spec.md` 负责产品意图，`plan.md` 负责技术方案，`contracts/` 负责接口，`tasks.md` 负责仍要执行的工作，Git 历史和 Release Notes 才负责记录过去。把同一段要求复制到每个文件，会让 Agent 获得更多文字，却得到更差的上下文。
 
 因此，我现在更愿意把 Spec Kit 称为 SDD 脚手架，而不是自动开发工具。它已经准备好了模板、命令、阶段关系和质量门，但最终契约是否明确、是否及时返工、是否值得执行完整流程，仍由开发者决定。
-
-第一次使用时，可以选择一项边界明确、但确实存在若干设计取舍的功能，依次执行：
-
-```text
-$speckit-constitution
-$speckit-specify
-$speckit-clarify
-$speckit-plan
-$speckit-checklist
-$speckit-tasks
-$speckit-analyze
-$speckit-implement
-$speckit-converge
-```
-
-走完之后，最值得复盘的不是 Agent 写了多少代码，而是每个阶段是否都把不确定性变成了下一阶段可以直接使用的契约。只要这条传递链成立，换一个会话、换一个 Agent，甚至隔一段时间再回来，项目意图仍然能够继续被执行。
 
 ## 引用
 
