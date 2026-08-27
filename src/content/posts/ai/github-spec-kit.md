@@ -17,7 +17,7 @@ lang: "zh_CN"
 
 使用 AI Agent 写代码时，最诱人的方式是直接描述需求，然后让它开始修改文件。对于一个按钮、一处样式或边界明确的缺陷，这样做通常没有问题。但需求一旦跨越多个模块，Agent 很容易一边理解需求，一边临时决定架构，最后交付出一套“代码能够运行，行为却和预期有偏差”的实现。
 
-以我创建的全面拥抱 SDD 开发的开源字幕翻译 IINA 插件项目 [SubTandem](https://github.com/janwee-sha/SubTandem) 为例，在开发这个项目过程中我没有写过一行代码。插件看起来只是“读取字幕、调用翻译服务、显示译文”，实际却涉及播放器窗口隔离、异步任务失效、各种 AI Provider 的 API 协议、凭据存储、Swift helper、TypeScript 插件、安装包和实机验收等技术细节。任何一个边界没有提前说清，最后都可能表现为译文写入错误窗口、跳转后显示过期结果，甚至把凭据带进日志。
+以我开发的开源 IINA 字幕翻译插件 [SubTandem](https://github.com/janwee-sha/SubTandem) 为例：这个项目全面采用 SDD，而我在整个开发过程中没有亲手写过一行代码。插件的功能看似只是“读取字幕、调用翻译服务、显示译文”，实际却涉及播放器窗口隔离、异步任务失效、各种 AI Provider 的 API 协议、凭据存储、Swift helper、TypeScript 插件、安装包和实机验收等技术细节。任何一处边界若没有提前界定清楚，最终都可能导致译文写入错误窗口、跳转后仍显示过期结果，甚至将凭据带入日志。
 
 [GitHub Spec Kit](https://github.com/github/spec-kit) 提供了一套开箱即用的 Spec-Driven Development（SDD）脚手架，把“从想法到代码”拆成一组职责清楚的阶段，并使用 Markdown 产物在阶段之间传递已经确认的意图。按照[官方对 SDD 的解释](https://github.github.com/spec-kit/concepts/sdd.html)，规格不再是写完就丢弃的前置文档，而是能够继续驱动计划、任务与实现的契约。
 
