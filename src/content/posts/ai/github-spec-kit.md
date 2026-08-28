@@ -27,9 +27,7 @@ lang: "zh_CN"
 
 ## 02. 安装 Specify CLI
 
-Spec Kit 的命令行工具名为 `specify`。它负责把模板、脚本和 Agent 集成安装到项目中，真正阅读需求、生成产物和实现代码的仍是你选择的 AI Agent。
-
-官方推荐使用 `uv` 安装。安装 `uv` 后执行：
+Spec Kit 的命令行工具名为 `specify`。它负责把模板、脚本和 Agent 集成安装到项目中。官方推荐使用 `uv` 安装。安装 `uv` 后执行：
 
 ```bash
 uv tool install specify-cli
