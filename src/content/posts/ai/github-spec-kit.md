@@ -290,19 +290,18 @@ Spec Kit 1.0.1 使用 `.specify/feature.json` 记录当前活动规格，并默�
 
 SDD 很适合子 Agent 协作，因为 `research.md`、`contracts/` 和 `tasks.md` 已经提供了比一句“帮我实现这个模块”更稳定的交接材料。子 Agent 协作的价值在于减少关键路径，与并行数量无关。
 
-在计划阶段，可以让不同子 Agent 分别调查规格涉及的不同技术细节，再由主 Agent 将结论收敛进 `research.md` 和 `plan.md`。在实现阶段，只有真实独立的切片才适合并行：例如在开发 SubTandem 时，一个 Agent 负责 provider adapter，另一个负责不共享文件的 native contract tests。共享消息类型、入口文件和构建配置是热点，应由单一负责人修改，或者事先规定合并顺序。
-
-一次可执行的委派至少要说明以下内容：
+在计划阶段，可以让不同子 Agent 分别调查规格涉及的不同技术细节，再由主 Agent 将结论收敛进 `research.md` 和 `plan.md`。在实现阶段，只有真实独立的切片才适合并行：例如在计划一个 SDD 规格阶段，主 Agent 让一个 子 Agent 负责“状态激活”的技术调研，让另一个负责“UI 交互”的技术调研。 在 Codex 中，这个并行协作流程可能长这样：
 
 ```text
-范围：实现哪个任务和用户故事
-契约：必须遵守哪些 spec、data model 或 contracts
-文件：允许修改哪些文件，哪些共享文件禁止修改
-验证：必须运行哪些命令
-完成：什么结果可以交回主 Agent
+• Started `/root/activation_research`
+• Started `/root/ui_research`
+• Interacted with `/root/activation_research`
+• Interacted with `/root/ui_research`
+• Completed `/root/ui_research`
+• Completed `/root/activation_research`
 ```
 
-如果这些信息无法写清，说明任务拆分还没有达到可以并行的质量。先修正计划或任务，比让多个 Agent 在同一批文件上互相覆盖更省时间。需要同时修改独立功能时，还应使用隔离 worktree，让工作区和提交边界真正分开。
+由于这两个技术调研都只在 Agent 内部写入状态，两者都没有修改工作区的文件，因此它们不会在同一批文件上互相覆盖，同时并行任务也让 Agent 的工作速度更快。
 
 ## 14. SDD 实践的成功要素是契约质量
 
